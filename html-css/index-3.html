@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Minimal Git Visualizer</title>
+    <link rel="stylesheet" href="style-4.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+</head>
+<body>
+    
+    <div class="pipeline">
+        
+        <!-- Local Environment -->
+        <div class="environment env-local">
+            <div class="env-title">🖥️ Local Machine (Your Disk)</div>
+            <div class="env-zones">
+                <div class="zone" id="zone-working">
+                    <div class="zone-title">Working Dir</div>
+                </div>
+                <div class="arrow">→</div>
+                <div class="zone" id="zone-staging">
+                    <div class="zone-title">Staging</div>
+                </div>
+                <div class="arrow">→</div>
+                <div class="zone" id="zone-local">
+                    <div class="zone-title">Local Repo</div>
+                    <div class="commit-history" id="local-history"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Network Boundary -->
+        <div class="network-gap">
+            <div class="network-line"></div>
+            <div class="arrow push-arrow">→</div>
+            <div class="network-label">Internet</div>
+            <div class="network-line"></div>
+        </div>
+
+        <!-- Remote Environment -->
+        <div class="environment env-remote">
+            <div class="env-title">☁️ Remote Server</div>
+            <div class="env-zones">
+                <div class="zone" id="zone-remote">
+                    <div class="zone-title">GitHub</div>
+                    <div class="commit-history" id="remote-history"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- The File (moves around) -->
+        <div class="file-card" id="file-card">
+            <div class="file-icon">📄</div>
+            <div class="file-name">index.js</div>
+            <div class="status-dot" id="file-status"></div>
+        </div>
+    </div>
+    
+    <div class="bottom-controls">
+        <div class="track-label">Outgoing (Local → Remote)</div>
+        <div class="stepper-controls outgoing-track">
+            <button id="btn-edit" class="step active">Edit File</button>
+            <button id="btn-add" class="step" disabled>git add</button>
+            <button id="btn-commit" class="step" disabled>git commit</button>
+            <button id="btn-push" class="step" disabled>git push</button>
+        </div>
+        
+        <div class="track-label" style="margin-top: 10px;">Incoming / Reverting (Remote → Local)</div>
+        <div class="stepper-controls incoming-track">
+            <button id="btn-checkout" class="step step-incoming" disabled>← git checkout</button>
+            <button id="btn-pull" class="step step-incoming" disabled>← git pull</button>
+        </div>
+
+        <div style="display: flex; gap: 10px; margin-top: 10px;">
+            <button id="btn-mock-remote" class="reset-btn">Mock Remote Push (Enable Pull)</button>
+            <button id="btn-reset" class="reset-btn">Reset Flow</button>
+        </div>
+    </div>
+    
+    <script src="script.js"></script>
+</body>
+</html>

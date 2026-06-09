@@ -1,0 +1,38 @@
+{
+  "hash": "ac53744b",
+  "configHash": "f8d83493",
+  "lockfileHash": "258744cb",
+  "browserHash": "d904ab88",
+  "optimized": {
+    "gsap": {
+      "src": "../../gsap/index.js",
+      "file": "gsap.js",
+      "fileHash": "21b7ef39",
+      "needsInterop": false
+    },
+    "three": {
+      "src": "../../three/build/three.module.js",
+      "file": "three.js",
+      "fileHash": "49e752b7",
+      "needsInterop": false
+    },
+    "three/examples/jsm/controls/OrbitControls.js": {
+      "src": "../../three/examples/jsm/controls/OrbitControls.js",
+      "file": "three_examples_jsm_controls_OrbitControls__js.js",
+      "fileHash": "44485a41",
+      "needsInterop": false
+    },
+    "three/examples/jsm/renderers/CSS2DRenderer.js": {
+      "src": "../../three/examples/jsm/renderers/CSS2DRenderer.js",
+      "file": "three_examples_jsm_renderers_CSS2DRenderer__js.js",
+      "fileHash": "6068b05c",
+      "needsInterop": false
+    }
+  },
+  "chunks": {
+    "three.module-Dhi4sXJn": {
+      "file": "three.module-Dhi4sXJn.js",
+      "isDynamicEntry": false
+    }
+  }
+}

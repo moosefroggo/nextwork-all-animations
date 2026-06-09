@@ -1,0 +1,265 @@
+<svg viewBox="0 0 1680 856" xmlns="http://www.w3.org/2000/svg" font-family="Archivo,sans-serif">
+<defs>
+  <radialGradient id="vig" cx="42%" cy="40%" r="78%">
+    <stop offset="0%" stop-color="#0b0c0f"/>
+    <stop offset="100%" stop-color="#070709"/>
+  </radialGradient>
+  <filter id="grain"><feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" stitchTiles="stitch"/>
+    <feColorMatrix type="saturate" values="0"/>
+    <feComponentTransfer><feFuncA type="linear" slope="0.05"/></feComponentTransfer>
+    <feComposite operator="over" in2="SourceGraphic"/></filter>
+</defs>
+<rect width="1680" height="856" fill="url(#vig)"/>
+<g opacity="0.5">
+<line x1="835.0" y1="-89.2" x2="-67.0" y2="431.6" stroke="#171a21" stroke-width="1"/>
+<line x1="878.0" y1="-64.4" x2="-24.1" y2="456.4" stroke="#171a21" stroke-width="1"/>
+<line x1="920.9" y1="-39.6" x2="18.9" y2="481.2" stroke="#171a21" stroke-width="1"/>
+<line x1="963.9" y1="-14.8" x2="61.8" y2="506.0" stroke="#171a21" stroke-width="1"/>
+<line x1="1006.8" y1="10.0" x2="104.8" y2="530.8" stroke="#171a21" stroke-width="1"/>
+<line x1="1049.8" y1="34.8" x2="147.7" y2="555.6" stroke="#171a21" stroke-width="1"/>
+<line x1="1092.8" y1="59.6" x2="190.7" y2="580.4" stroke="#171a21" stroke-width="1"/>
+<line x1="1135.7" y1="84.4" x2="233.7" y2="605.2" stroke="#171a21" stroke-width="1"/>
+<line x1="1178.7" y1="109.2" x2="276.6" y2="630.0" stroke="#171a21" stroke-width="1"/>
+<line x1="1221.6" y1="134.0" x2="319.6" y2="654.8" stroke="#171a21" stroke-width="1"/>
+<line x1="1264.6" y1="158.8" x2="362.5" y2="679.6" stroke="#171a21" stroke-width="1"/>
+<line x1="1307.5" y1="183.6" x2="405.5" y2="704.4" stroke="#171a21" stroke-width="1"/>
+<line x1="1350.5" y1="208.4" x2="448.4" y2="729.2" stroke="#171a21" stroke-width="1"/>
+<line x1="1393.4" y1="233.2" x2="491.4" y2="754.0" stroke="#171a21" stroke-width="1"/>
+<line x1="1436.4" y1="258.0" x2="534.3" y2="778.8" stroke="#171a21" stroke-width="1"/>
+<line x1="1479.3" y1="282.8" x2="577.3" y2="803.6" stroke="#171a21" stroke-width="1"/>
+<line x1="1522.3" y1="307.6" x2="620.3" y2="828.4" stroke="#171a21" stroke-width="1"/>
+<line x1="1565.3" y1="332.4" x2="663.2" y2="853.2" stroke="#171a21" stroke-width="1"/>
+<line x1="1608.2" y1="357.2" x2="706.2" y2="878.0" stroke="#171a21" stroke-width="1"/>
+<line x1="1651.2" y1="382.0" x2="749.1" y2="902.8" stroke="#171a21" stroke-width="1"/>
+<line x1="1694.1" y1="406.8" x2="792.1" y2="927.6" stroke="#171a21" stroke-width="1"/>
+<line x1="1737.1" y1="431.6" x2="835.0" y2="952.4" stroke="#171a21" stroke-width="1"/>
+<line x1="1780.0" y1="456.4" x2="878.0" y2="977.2" stroke="#171a21" stroke-width="1"/>
+<line x1="1823.0" y1="481.2" x2="920.9" y2="1002.0" stroke="#171a21" stroke-width="1"/>
+<line x1="1865.9" y1="506.0" x2="963.9" y2="1026.8" stroke="#171a21" stroke-width="1"/>
+<line x1="1908.9" y1="530.8" x2="1006.8" y2="1051.6" stroke="#171a21" stroke-width="1"/>
+<line x1="835.0" y1="-89.2" x2="1930.4" y2="543.2" stroke="#171a21" stroke-width="1"/>
+<line x1="792.1" y1="-64.4" x2="1887.4" y2="568.0" stroke="#171a21" stroke-width="1"/>
+<line x1="749.1" y1="-39.6" x2="1844.5" y2="592.8" stroke="#171a21" stroke-width="1"/>
+<line x1="706.2" y1="-14.8" x2="1801.5" y2="617.6" stroke="#171a21" stroke-width="1"/>
+<line x1="663.2" y1="10.0" x2="1758.6" y2="642.4" stroke="#171a21" stroke-width="1"/>
+<line x1="620.3" y1="34.8" x2="1715.6" y2="667.2" stroke="#171a21" stroke-width="1"/>
+<line x1="577.3" y1="59.6" x2="1672.6" y2="692.0" stroke="#171a21" stroke-width="1"/>
+<line x1="534.3" y1="84.4" x2="1629.7" y2="716.8" stroke="#171a21" stroke-width="1"/>
+<line x1="491.4" y1="109.2" x2="1586.7" y2="741.6" stroke="#171a21" stroke-width="1"/>
+<line x1="448.4" y1="134.0" x2="1543.8" y2="766.4" stroke="#171a21" stroke-width="1"/>
+<line x1="405.5" y1="158.8" x2="1500.8" y2="791.2" stroke="#171a21" stroke-width="1"/>
+<line x1="362.5" y1="183.6" x2="1457.9" y2="816.0" stroke="#171a21" stroke-width="1"/>
+<line x1="319.6" y1="208.4" x2="1414.9" y2="840.8" stroke="#171a21" stroke-width="1"/>
+<line x1="276.6" y1="233.2" x2="1372.0" y2="865.6" stroke="#171a21" stroke-width="1"/>
+<line x1="233.7" y1="258.0" x2="1329.0" y2="890.4" stroke="#171a21" stroke-width="1"/>
+<line x1="190.7" y1="282.8" x2="1286.1" y2="915.2" stroke="#171a21" stroke-width="1"/>
+<line x1="147.7" y1="307.6" x2="1243.1" y2="940.0" stroke="#171a21" stroke-width="1"/>
+<line x1="104.8" y1="332.4" x2="1200.1" y2="964.8" stroke="#171a21" stroke-width="1"/>
+<line x1="61.8" y1="357.2" x2="1157.2" y2="989.6" stroke="#171a21" stroke-width="1"/>
+<line x1="18.9" y1="382.0" x2="1114.2" y2="1014.4" stroke="#171a21" stroke-width="1"/>
+<line x1="-24.1" y1="406.8" x2="1071.3" y2="1039.2" stroke="#171a21" stroke-width="1"/>
+<line x1="-67.0" y1="431.6" x2="1028.3" y2="1064.0" stroke="#171a21" stroke-width="1"/>
+</g>
+<polygon points="276.6,282.8 835.0,605.2 835.0,577.9 276.6,255.5" fill="#1a1713" stroke="#0d0c0a" stroke-width="1.0" stroke-linejoin="round"/>
+<polygon points="1200.1,394.4 835.0,605.2 835.0,577.9 1200.1,367.1" fill="#13100d" stroke="#0d0c0a" stroke-width="1.0" stroke-linejoin="round"/>
+<polygon points="641.7,44.7 1200.1,367.1 835.0,577.9 276.6,255.5" fill="#24201a" stroke="#0d0c0a" stroke-width="1.0" stroke-linejoin="round"/>
+<line x1="641.7" y1="44.7" x2="1200.1" y2="367.1" stroke="#ffffff" stroke-width="1" opacity="0.06"/>
+<g opacity="0.6">
+<line x1="641.7" y1="44.7" x2="276.6" y2="255.5" stroke="#1f242d" stroke-width="1"/>
+<line x1="695.4" y1="75.7" x2="330.3" y2="286.5" stroke="#1f242d" stroke-width="1"/>
+<line x1="749.1" y1="106.7" x2="384.0" y2="317.5" stroke="#1f242d" stroke-width="1"/>
+<line x1="802.8" y1="137.7" x2="437.7" y2="348.5" stroke="#1f242d" stroke-width="1"/>
+<line x1="856.5" y1="168.7" x2="491.4" y2="379.5" stroke="#1f242d" stroke-width="1"/>
+<line x1="910.2" y1="199.7" x2="545.1" y2="410.5" stroke="#1f242d" stroke-width="1"/>
+<line x1="963.9" y1="230.7" x2="598.8" y2="441.5" stroke="#1f242d" stroke-width="1"/>
+<line x1="1017.6" y1="261.7" x2="652.5" y2="472.5" stroke="#1f242d" stroke-width="1"/>
+<line x1="1071.3" y1="292.7" x2="706.2" y2="503.5" stroke="#1f242d" stroke-width="1"/>
+<line x1="1125.0" y1="323.7" x2="759.9" y2="534.5" stroke="#1f242d" stroke-width="1"/>
+<line x1="1178.7" y1="354.7" x2="813.5" y2="565.5" stroke="#1f242d" stroke-width="1"/>
+<line x1="641.7" y1="44.7" x2="1200.1" y2="367.1" stroke="#1f242d" stroke-width="1"/>
+<line x1="588.0" y1="75.7" x2="1146.4" y2="398.1" stroke="#1f242d" stroke-width="1"/>
+<line x1="534.3" y1="106.7" x2="1092.8" y2="429.1" stroke="#1f242d" stroke-width="1"/>
+<line x1="480.6" y1="137.7" x2="1039.1" y2="460.1" stroke="#1f242d" stroke-width="1"/>
+<line x1="427.0" y1="168.7" x2="985.4" y2="491.1" stroke="#1f242d" stroke-width="1"/>
+<line x1="373.3" y1="199.7" x2="931.7" y2="522.1" stroke="#1f242d" stroke-width="1"/>
+<line x1="319.6" y1="230.7" x2="878.0" y2="553.1" stroke="#1f242d" stroke-width="1"/>
+</g>
+<polygon points="330.3,274.1 448.4,342.3 448.4,286.5 330.3,218.3" fill="#5b5245" stroke="#2d2922" stroke-width="1.0" stroke-linejoin="round"/>
+<polygon points="566.6,274.1 448.4,342.3 448.4,286.5 566.6,218.3" fill="#413a31" stroke="#2d2922" stroke-width="1.0" stroke-linejoin="round"/>
+<polygon points="448.4,150.1 566.6,218.3 448.4,286.5 330.3,218.3" fill="#7e7160" stroke="#2d2922" stroke-width="1.0" stroke-linejoin="round"/>
+<line x1="448.4" y1="150.1" x2="566.6" y2="218.3" stroke="#ffffff" stroke-width="1" opacity="0.06"/>
+<polygon points="384.0,224.5 437.7,255.5 437.7,243.1 384.0,212.1" fill="#b0a48e" stroke="#565045" stroke-width="1.0" stroke-linejoin="round"/>
+<polygon points="502.1,218.3 437.7,255.5 437.7,243.1 502.1,205.9" fill="#877e6d" stroke="#565045" stroke-width="1.0" stroke-linejoin="round"/>
+<polygon points="448.4,174.9 502.1,205.9 437.7,243.1 384.0,212.1" fill="#e5d5b9" stroke="#565045" stroke-width="1.0" stroke-linejoin="round"/>
+<line x1="448.4" y1="174.9" x2="502.1" y2="205.9" stroke="#ffffff" stroke-width="1" opacity="0.06"/>
+<polygon points="555.8,292.7 663.2,354.7 663.2,317.5 555.8,255.5" fill="#6f6250" stroke="#373128" stroke-width="1.0" stroke-linejoin="round"/>
+<polygon points="770.6,292.7 663.2,354.7 663.2,317.5 770.6,255.5" fill="#4f4639" stroke="#373128" stroke-width="1.0" stroke-linejoin="round"/>
+<polygon points="663.2,193.5 770.6,255.5 663.2,317.5 555.8,255.5" fill="#9a876f" stroke="#373128" stroke-width="1.0" stroke-linejoin="round"/>
+<line x1="663.2" y1="193.5" x2="770.6" y2="255.5" stroke="#ffffff" stroke-width="1" opacity="0.06"/>
+<polygon points="620.3,255.5 663.2,280.3 663.2,250.6 620.3,225.8" fill="#9f9481" stroke="#4e493f" stroke-width="1.0" stroke-linejoin="round"/>
+<polygon points="706.2,255.5 663.2,280.3 663.2,250.6 706.2,225.8" fill="#787061" stroke="#4e493f" stroke-width="1.0" stroke-linejoin="round"/>
+<polygon points="663.2,201.0 706.2,225.8 663.2,250.6 620.3,225.8" fill="#cec0a7" stroke="#4e493f" stroke-width="1.0" stroke-linejoin="round"/>
+<line x1="663.2" y1="201.0" x2="706.2" y2="225.8" stroke="#ffffff" stroke-width="1" opacity="0.06"/>
+<polygon points="770.6,329.9 899.5,404.3 899.5,354.7 770.6,280.3" fill="#98692b" stroke="#4c3415" stroke-width="1.0" stroke-linejoin="round"/>
+<polygon points="1028.3,329.9 899.5,404.3 899.5,354.7 1028.3,280.3" fill="#6c4b1f" stroke="#4c3415" stroke-width="1.0" stroke-linejoin="round"/>
+<polygon points="899.5,205.9 1028.3,280.3 899.5,354.7 770.6,280.3" fill="#d1923c" stroke="#4c3415" stroke-width="1.0" stroke-linejoin="round"/>
+<line x1="899.5" y1="205.9" x2="1028.3" y2="280.3" stroke="#ffffff" stroke-width="1" opacity="0.06"/>
+<polygon points="835.0,280.3 899.5,317.5 899.5,305.1 835.0,267.9" fill="#a06f2e" stroke="#503717" stroke-width="1.0" stroke-linejoin="round"/>
+<polygon points="963.9,280.3 899.5,317.5 899.5,305.1 963.9,267.9" fill="#765222" stroke="#503717" stroke-width="1.0" stroke-linejoin="round"/>
+<polygon points="899.5,230.7 963.9,267.9 899.5,305.1 835.0,267.9" fill="#d9973e" stroke="#503717" stroke-width="1.0" stroke-linejoin="round"/>
+<line x1="899.5" y1="230.7" x2="963.9" y2="267.9" stroke="#ffffff" stroke-width="1" opacity="0.06"/>
+<polygon points="835.0,264.8 899.5,302.0 899.5,289.6 835.0,252.4" fill="#a8742f" stroke="#543a17" stroke-width="1.0" stroke-linejoin="round"/>
+<polygon points="963.9,264.8 899.5,302.0 899.5,289.6 963.9,252.4" fill="#7c5623" stroke="#543a17" stroke-width="1.0" stroke-linejoin="round"/>
+<polygon points="899.5,215.2 963.9,252.4 899.5,289.6 835.0,252.4" fill="#e39e40" stroke="#543a17" stroke-width="1.0" stroke-linejoin="round"/>
+<line x1="899.5" y1="215.2" x2="963.9" y2="252.4" stroke="#ffffff" stroke-width="1" opacity="0.06"/>
+<polygon points="835.0,249.3 899.5,286.5 899.5,274.1 835.0,236.9" fill="#af7a32" stroke="#573d19" stroke-width="1.0" stroke-linejoin="round"/>
+<polygon points="963.9,249.3 899.5,286.5 899.5,274.1 963.9,236.9" fill="#815a25" stroke="#573d19" stroke-width="1.0" stroke-linejoin="round"/>
+<polygon points="899.5,199.7 963.9,236.9 899.5,274.1 835.0,236.9" fill="#eea644" stroke="#573d19" stroke-width="1.0" stroke-linejoin="round"/>
+<line x1="899.5" y1="199.7" x2="963.9" y2="236.9" stroke="#ffffff" stroke-width="1" opacity="0.06"/>
+<path d="M 496.8 245.7 L 663.2 292.2 L 770.6 329.4" fill="none" stroke="#3c3a37" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" opacity="0.7" stroke-dasharray="1 6"/>
+<path d="M 668.6 332.3 L 617.0 399.2 L 692.2 442.6 L 813.5 416.0" fill="none" stroke="#7fa3aa" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.97"/>
+<path d="M 668.6 332.3 L 776.0 394.3 L 813.5 416.0" fill="none" stroke="#e6a23c" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.97"/>
+<circle cx="692.2" cy="442.6" r="4.4" fill="#7fa3aa" stroke="#0b0c0f" stroke-width="1.6"/>
+<circle cx="776.0" cy="394.3" r="4.4" fill="#e6a23c" stroke="#0b0c0f" stroke-width="1.6"/>
+<text x="785.0" y="387.3" font-family="JetBrains Mono,monospace" font-size="10.5" font-weight="700" fill="#e6a23c" text-anchor="start" letter-spacing="0" opacity="1.0">main</text>
+<text x="702.2" y="446.6" font-family="JetBrains Mono,monospace" font-size="10.5" font-weight="700" fill="#7fa3aa" text-anchor="start" letter-spacing="0" opacity="1.0">add-resources</text>
+<rect x="802.5" y="405.0" width="22" height="22" rx="2" fill="#bd5a32" stroke="#0b0c0f" stroke-width="1.8" transform="rotate(45 813.5 416.0)"/>
+<polygon points="1200.1,394.4 1372.0,493.6 1006.8,704.4 835.0,605.2" fill="#050608"/>
+<line x1="1200.1" y1="367.1" x2="835.0" y2="577.9" stroke="#23282f" stroke-width="1.2" opacity="0.8"/>
+<line x1="1200.1" y1="380.8" x2="835.0" y2="591.6" stroke="#23282f" stroke-width="1.2" opacity="0.8"/>
+<polygon points="985.4,716.8 1243.1,865.6 1243.1,803.6 985.4,654.8" fill="#111821" stroke="#090d12" stroke-width="1.0" stroke-linejoin="round"/>
+<polygon points="1608.2,654.8 1243.1,865.6 1243.1,803.6 1608.2,592.8" fill="#0c1117" stroke="#090d12" stroke-width="1.0" stroke-linejoin="round"/>
+<polygon points="1350.5,444.0 1608.2,592.8 1243.1,803.6 985.4,654.8" fill="#192532" stroke="#090d12" stroke-width="1.0" stroke-linejoin="round"/>
+<line x1="1350.5" y1="444.0" x2="1608.2" y2="592.8" stroke="#ffffff" stroke-width="1" opacity="0.06"/>
+<g opacity="0.55">
+<line x1="1350.5" y1="444.0" x2="985.4" y2="654.8" stroke="#223040" stroke-width="1"/>
+<line x1="1404.2" y1="475.0" x2="1039.1" y2="685.8" stroke="#223040" stroke-width="1"/>
+<line x1="1457.9" y1="506.0" x2="1092.8" y2="716.8" stroke="#223040" stroke-width="1"/>
+<line x1="1511.6" y1="537.0" x2="1146.4" y2="747.8" stroke="#223040" stroke-width="1"/>
+<line x1="1565.3" y1="568.0" x2="1200.1" y2="778.8" stroke="#223040" stroke-width="1"/>
+<line x1="1350.5" y1="444.0" x2="1608.2" y2="592.8" stroke="#223040" stroke-width="1"/>
+<line x1="1296.8" y1="475.0" x2="1554.5" y2="623.8" stroke="#223040" stroke-width="1"/>
+<line x1="1243.1" y1="506.0" x2="1500.8" y2="654.8" stroke="#223040" stroke-width="1"/>
+<line x1="1189.4" y1="537.0" x2="1447.1" y2="685.8" stroke="#223040" stroke-width="1"/>
+<line x1="1135.7" y1="568.0" x2="1393.4" y2="716.8" stroke="#223040" stroke-width="1"/>
+<line x1="1082.0" y1="599.0" x2="1339.7" y2="747.8" stroke="#223040" stroke-width="1"/>
+<line x1="1028.3" y1="630.0" x2="1286.1" y2="778.8" stroke="#223040" stroke-width="1"/>
+</g>
+<polygon points="1178.7,617.6 1296.8,685.8 1296.8,592.8 1178.7,524.6" fill="#324a5f" stroke="#1a2731" stroke-width="1.0" stroke-linejoin="round"/>
+<polygon points="1414.9,617.6 1296.8,685.8 1296.8,592.8 1414.9,524.6" fill="#233442" stroke="#1a2731" stroke-width="1.0" stroke-linejoin="round"/>
+<polygon points="1296.8,456.4 1414.9,524.6 1296.8,592.8 1178.7,524.6" fill="#496b8a" stroke="#1a2731" stroke-width="1.0" stroke-linejoin="round"/>
+<line x1="1296.8" y1="456.4" x2="1414.9" y2="524.6" stroke="#ffffff" stroke-width="1" opacity="0.06"/>
+<line x1="1404.2" y1="608.9" x2="1307.5" y2="664.7" stroke="#1b2733" stroke-width="2"/>
+<line x1="1404.2" y1="594.0" x2="1307.5" y2="649.8" stroke="#1b2733" stroke-width="2"/>
+<line x1="1404.2" y1="579.2" x2="1307.5" y2="635.0" stroke="#1b2733" stroke-width="2"/>
+<line x1="1404.2" y1="564.3" x2="1307.5" y2="620.1" stroke="#1b2733" stroke-width="2"/>
+<line x1="1404.2" y1="549.4" x2="1307.5" y2="605.2" stroke="#1b2733" stroke-width="2"/>
+<rect x="1168.3" y="565.5" width="10" height="10" rx="2" fill="#6fa7c4" stroke="#0b0c0f" stroke-width="1.5"/>
+<rect x="1114.6" y="596.5" width="10" height="10" rx="2" fill="#7fa3aa" stroke="#0b0c0f" stroke-width="1.5"/>
+<polygon points="1067.0,444.0 1238.8,508.5 1204.4,528.3 1032.6,463.8" fill="#5f666e" stroke="#2f3337" stroke-width="1.0" stroke-linejoin="round"/>
+<path d="M 931.7 384.5 L 1049.8 452.7 L 1221.6 517.2 L 1264.6 566.8" fill="none" stroke="#f4bd63" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round"/>
+<polygon points="1264.6,566.8 1251.5,561.9 1261.6,553.1" fill="#f4bd63"/>
+<circle cx="529.0" cy="227.0" r="13.5" fill="#e6a23c" stroke="#0b0c0f" stroke-width="2.5"/>
+<text x="529.0" y="227.5" font-family="Archivo,sans-serif" font-size="15" font-weight="800" fill="#171108" text-anchor="middle" dominant-baseline="central">1</text>
+<circle cx="625.6" cy="245.6" r="13.5" fill="#e6a23c" stroke="#0b0c0f" stroke-width="2.5"/>
+<text x="625.6" y="246.1" font-family="Archivo,sans-serif" font-size="15" font-weight="800" fill="#171108" text-anchor="middle" dominant-baseline="central">2</text>
+<circle cx="770.6" cy="236.3" r="13.5" fill="#e6a23c" stroke="#0b0c0f" stroke-width="2.5"/>
+<text x="770.6" y="236.8" font-family="Archivo,sans-serif" font-size="15" font-weight="800" fill="#171108" text-anchor="middle" dominant-baseline="central">3</text>
+<circle cx="668.6" cy="331.5" r="13.5" fill="#e6a23c" stroke="#0b0c0f" stroke-width="2.5"/>
+<text x="668.6" y="332.0" font-family="Archivo,sans-serif" font-size="15" font-weight="800" fill="#171108" text-anchor="middle" dominant-baseline="central">4</text>
+<circle cx="813.5" cy="415.2" r="13.5" fill="#e6a23c" stroke="#0b0c0f" stroke-width="2.5"/>
+<text x="813.5" y="415.7" font-family="Archivo,sans-serif" font-size="15" font-weight="800" fill="#171108" text-anchor="middle" dominant-baseline="central">5</text>
+<circle cx="1135.7" cy="483.7" r="13.5" fill="#e6a23c" stroke="#0b0c0f" stroke-width="2.5"/>
+<text x="1135.7" y="484.2" font-family="Archivo,sans-serif" font-size="15" font-weight="800" fill="#171108" text-anchor="middle" dominant-baseline="central">6</text>
+<line x1="529.0" y1="227.0" x2="470.0" y2="226.0" stroke="#414750" stroke-width="1.2" stroke-dasharray="1 4" opacity="0.85"/>
+<circle cx="529.0" cy="227.0" r="2.4" fill="#414750"/>
+<rect x="302.0" y="152.0" rx="4" ry="4" width="170" height="74" fill="#111419" stroke="#262b33" stroke-width="1"/>
+<rect x="302.0" y="152.0" rx="4" ry="4" width="3.5" height="74" fill="#f4bd63" opacity="0.9"/>
+<text x="314.0" y="169.0" font-family="Archivo,sans-serif" font-size="10.5" font-weight="800" letter-spacing="1.4" fill="#f4bd63">① INITIALISE</text>
+<text x="314.0" y="186.0" font-family="JetBrains Mono,monospace" font-size="12.5" fill="#cfd4d9">git init</text>
+<text x="314.0" y="203.5" font-family="JetBrains Mono,monospace" font-size="12.5" fill="#cfd4d9">→ .git created</text>
+<line x1="625.6" y1="245.6" x2="548.0" y2="300.0" stroke="#414750" stroke-width="1.2" stroke-dasharray="1 4" opacity="0.85"/>
+<circle cx="625.6" cy="245.6" r="2.4" fill="#414750"/>
+<rect x="420.0" y="300.0" rx="4" ry="4" width="200" height="56" fill="#111419" stroke="#262b33" stroke-width="1"/>
+<rect x="420.0" y="300.0" rx="4" ry="4" width="3.5" height="56" fill="#f4bd63" opacity="0.9"/>
+<text x="432.0" y="317.0" font-family="Archivo,sans-serif" font-size="10.5" font-weight="800" letter-spacing="1.4" fill="#f4bd63">② STAGE → the index</text>
+<text x="432.0" y="334.0" font-family="JetBrains Mono,monospace" font-size="12.5" fill="#cfd4d9">git add learning-log.md</text>
+<line x1="770.6" y1="236.3" x2="800.0" y2="182.0" stroke="#414750" stroke-width="1.2" stroke-dasharray="1 4" opacity="0.85"/>
+<circle cx="770.6" cy="236.3" r="2.4" fill="#414750"/>
+<rect x="690.0" y="108.0" rx="4" ry="4" width="212" height="74" fill="#111419" stroke="#262b33" stroke-width="1"/>
+<rect x="690.0" y="108.0" rx="4" ry="4" width="3.5" height="74" fill="#f4bd63" opacity="0.9"/>
+<text x="702.0" y="125.0" font-family="Archivo,sans-serif" font-size="10.5" font-weight="800" letter-spacing="1.4" fill="#f4bd63">③ COMMIT · snapshot</text>
+<text x="702.0" y="142.0" font-family="JetBrains Mono,monospace" font-size="12.5" fill="#cfd4d9">git commit -m "Add initial …"</text>
+<text x="702.0" y="159.5" font-family="JetBrains Mono,monospace" font-size="12.5" fill="#cfd4d9">git log --oneline</text>
+<line x1="899.5" y1="231.3" x2="996.0" y2="198.0" stroke="#414750" stroke-width="1.2" stroke-dasharray="1 4" opacity="0.85"/>
+<circle cx="899.5" cy="231.3" r="2.4" fill="#414750"/>
+<rect x="996.0" y="160.0" rx="4" ry="4" width="158" height="56" fill="#111419" stroke="#262b33" stroke-width="1"/>
+<rect x="996.0" y="160.0" rx="4" ry="4" width="3.5" height="56" fill="#ece7dd" opacity="0.9"/>
+<text x="1008.0" y="177.0" font-family="Archivo,sans-serif" font-size="10.5" font-weight="800" letter-spacing="1.4" fill="#ece7dd">.GIT</text>
+<text x="1008.0" y="194.0" font-family="JetBrains Mono,monospace" font-size="12.5" fill="#b9b3a8">local repository</text>
+<line x1="668.6" y1="331.5" x2="648.0" y2="470.0" stroke="#414750" stroke-width="1.2" stroke-dasharray="1 4" opacity="0.85"/>
+<circle cx="668.6" cy="331.5" r="2.4" fill="#414750"/>
+<line x1="813.5" y1="415.2" x2="806.0" y2="470.0" stroke="#414750" stroke-width="1.2" stroke-dasharray="1 4" opacity="0.85"/>
+<circle cx="813.5" cy="415.2" r="2.4" fill="#414750"/>
+<rect x="540.0" y="470.0" rx="4" ry="4" width="300" height="74" fill="#111419" stroke="#262b33" stroke-width="1"/>
+<rect x="540.0" y="470.0" rx="4" ry="4" width="3.5" height="74" fill="#f4bd63" opacity="0.9"/>
+<text x="552.0" y="487.0" font-family="Archivo,sans-serif" font-size="10.5" font-weight="800" letter-spacing="1.4" fill="#f4bd63">④ BRANCH   ⑤ MERGE · RESOLVE</text>
+<text x="552.0" y="504.0" font-family="JetBrains Mono,monospace" font-size="12.5" fill="#cfd4d9">git checkout -b add-resources</text>
+<text x="552.0" y="521.5" font-family="JetBrains Mono,monospace" font-size="12.5" fill="#cfd4d9">git merge add-resources</text>
+<text x="552.0" y="562.0" font-family="JetBrains Mono,monospace" font-size="10.5" font-weight="400" fill="#bd5a32" text-anchor="start" letter-spacing="0" opacity="1.0">conflict  &lt;&lt;&lt;&lt;&lt;&lt;&lt; HEAD  =======  &gt;&gt;&gt;&gt;&gt;&gt;&gt; add-resources</text>
+<text x="552.0" y="580.0" font-family="JetBrains Mono,monospace" font-size="11" font-weight="400" fill="#7c848d" text-anchor="start" letter-spacing="0" opacity="1.0">git log --oneline --graph</text>
+<line x1="1135.7" y1="483.7" x2="1180.0" y2="398.0" stroke="#414750" stroke-width="1.2" stroke-dasharray="1 4" opacity="0.85"/>
+<circle cx="1135.7" cy="483.7" r="2.4" fill="#414750"/>
+<rect x="1180.0" y="360.0" rx="4" ry="4" width="216" height="74" fill="#111419" stroke="#262b33" stroke-width="1"/>
+<rect x="1180.0" y="360.0" rx="4" ry="4" width="3.5" height="74" fill="#f4bd63" opacity="0.9"/>
+<text x="1192.0" y="377.0" font-family="Archivo,sans-serif" font-size="10.5" font-weight="800" letter-spacing="1.4" fill="#f4bd63">⑥ PUSH → remote</text>
+<text x="1192.0" y="394.0" font-family="JetBrains Mono,monospace" font-size="12.5" fill="#cfd4d9">git remote add origin …</text>
+<text x="1192.0" y="411.5" font-family="JetBrains Mono,monospace" font-size="12.5" fill="#cfd4d9">git push -u origin main</text>
+<line x1="1296.8" y1="524.6" x2="1276.0" y2="322.0" stroke="#414750" stroke-width="1.2" stroke-dasharray="1 4" opacity="0.85"/>
+<circle cx="1296.8" cy="524.6" r="2.4" fill="#414750"/>
+<rect x="1150.0" y="250.0" rx="4" ry="4" width="224" height="74" fill="#111419" stroke="#26384a" stroke-width="1"/>
+<rect x="1150.0" y="250.0" rx="4" ry="4" width="3.5" height="74" fill="#a8c2d4" opacity="0.9"/>
+<text x="1162.0" y="267.0" font-family="Archivo,sans-serif" font-size="10.5" font-weight="800" letter-spacing="1.4" fill="#a8c2d4">REMOTE REPOSITORY</text>
+<text x="1162.0" y="284.0" font-family="JetBrains Mono,monospace" font-size="12.5" fill="#a8c2d4">origin · github.com</text>
+<text x="1162.0" y="301.5" font-family="JetBrains Mono,monospace" font-size="12.5" fill="#a8c2d4">public to the world</text>
+<text x="520.0" y="612.0" font-family="Archivo,sans-serif" font-size="32" font-weight="900" fill="#ece7dd" text-anchor="start" letter-spacing="3" opacity="1.0">LOCAL</text>
+<text x="522.0" y="636.0" font-family="Archivo,sans-serif" font-size="12" font-weight="700" fill="#b9b3a8" text-anchor="start" letter-spacing="4" opacity="1.0">ON  YOUR  MACHINE</text>
+<text x="522.0" y="658.0" font-family="JetBrains Mono,monospace" font-size="10.5" font-weight="400" fill="#7c848d" text-anchor="start" letter-spacing="0" opacity="1.0">git config --global user.name / user.email     git status     git checkout main</text>
+<text x="1148.0" y="600.0" font-family="Archivo,sans-serif" font-size="32" font-weight="900" fill="#a8c2d4" text-anchor="start" letter-spacing="3" opacity="1.0">REMOTE</text>
+<text x="1150.0" y="624.0" font-family="Archivo,sans-serif" font-size="12" font-weight="700" fill="#7f9bb0" text-anchor="start" letter-spacing="4" opacity="1.0">GITHUB  ·  ORIGIN</text>
+<text x="1150.0" y="646.0" font-family="JetBrains Mono,monospace" font-size="10.5" font-weight="400" fill="#56707f" text-anchor="start" letter-spacing="0" opacity="1.0">git branch -M main     ·     git push origin add-resources</text>
+<line x1="990" y1="700" x2="1110" y2="700" stroke="#2b333d" stroke-width="1"/>
+<text x="1050.0" y="694.0" font-family="Archivo,sans-serif" font-size="11" font-weight="800" fill="#5d6b78" text-anchor="middle" letter-spacing="3" opacity="1.0">THE  NETWORK</text>
+<text x="70.0" y="78.0" font-family="Archivo,sans-serif" font-size="46" font-weight="900" fill="#ece7dd" text-anchor="start" letter-spacing="2" opacity="1.0">THE  GIT  YARD</text>
+<text x="72.0" y="108.0" font-family="Archivo,sans-serif" font-size="14" font-weight="800" fill="#e6a23c" text-anchor="start" letter-spacing="5" opacity="1.0">FROM  YOUR  MACHINE  TO  THE  WORLD</text>
+<text x="72.0" y="134.0" font-family="JetBrains Mono,monospace" font-size="12.5" font-weight="500" fill="#b9b3a8" text-anchor="start" letter-spacing="0" opacity="1.0">working directory  →  staging (index)  →  local repository (.git)  →  remote (origin)</text>
+<text x="72.0" y="810.0" font-family="Archivo,sans-serif" font-size="11.5" font-weight="700" fill="#7c848d" text-anchor="start" letter-spacing="1" opacity="1.0">NextWork · Learn Git Fundamentals</text>
+<text x="72.0" y="828.0" font-family="JetBrains Mono,monospace" font-size="11" font-weight="400" fill="#7c848d" text-anchor="start" letter-spacing="0" opacity="1.0">repo: git-learning-log   ·   one file, real history, branches, a resolved merge</text>
+<rect x="1328" y="56" width="300" height="150" rx="8" fill="#0e1116" stroke="#262b33" stroke-width="1"/>
+<text x="1346.0" y="82.0" font-family="Archivo,sans-serif" font-size="12" font-weight="800" fill="#ece7dd" text-anchor="start" letter-spacing="2" opacity="1.0">THE  FLOW</text>
+<circle cx="1354" cy="98" r="8" fill="#e6a23c" stroke="#0b0c0f" stroke-width="1.6"/>
+<text x="1354" y="98.5" font-family="Archivo,sans-serif" font-size="10" font-weight="800" fill="#171108" text-anchor="middle" dominant-baseline="central">1</text>
+<text x="1370" y="102" font-family="JetBrains Mono,monospace" font-size="11.5" fill="#cfd4d9">git init</text>
+<text x="1610" y="102" font-family="Archivo,sans-serif" font-size="10.5" fill="#7c848d" text-anchor="end">founds .git</text>
+<circle cx="1354" cy="115.5" r="8" fill="#e6a23c" stroke="#0b0c0f" stroke-width="1.6"/>
+<text x="1354" y="116.0" font-family="Archivo,sans-serif" font-size="10" font-weight="800" fill="#171108" text-anchor="middle" dominant-baseline="central">2</text>
+<text x="1370" y="119.5" font-family="JetBrains Mono,monospace" font-size="11.5" fill="#cfd4d9">git add</text>
+<text x="1610" y="119.5" font-family="Archivo,sans-serif" font-size="10.5" fill="#7c848d" text-anchor="end">stage to index</text>
+<circle cx="1354" cy="133.0" r="8" fill="#e6a23c" stroke="#0b0c0f" stroke-width="1.6"/>
+<text x="1354" y="133.5" font-family="Archivo,sans-serif" font-size="10" font-weight="800" fill="#171108" text-anchor="middle" dominant-baseline="central">3</text>
+<text x="1370" y="137.0" font-family="JetBrains Mono,monospace" font-size="11.5" fill="#cfd4d9">git commit</text>
+<text x="1610" y="137.0" font-family="Archivo,sans-serif" font-size="10.5" fill="#7c848d" text-anchor="end">save snapshot</text>
+<circle cx="1354" cy="150.5" r="8" fill="#e6a23c" stroke="#0b0c0f" stroke-width="1.6"/>
+<text x="1354" y="151.0" font-family="Archivo,sans-serif" font-size="10" font-weight="800" fill="#171108" text-anchor="middle" dominant-baseline="central">4</text>
+<text x="1370" y="154.5" font-family="JetBrains Mono,monospace" font-size="11.5" fill="#cfd4d9">git checkout -b</text>
+<text x="1610" y="154.5" font-family="Archivo,sans-serif" font-size="10.5" fill="#7c848d" text-anchor="end">branch off</text>
+<circle cx="1354" cy="168.0" r="8" fill="#e6a23c" stroke="#0b0c0f" stroke-width="1.6"/>
+<text x="1354" y="168.5" font-family="Archivo,sans-serif" font-size="10" font-weight="800" fill="#171108" text-anchor="middle" dominant-baseline="central">5</text>
+<text x="1370" y="172.0" font-family="JetBrains Mono,monospace" font-size="11.5" fill="#cfd4d9">git merge</text>
+<text x="1610" y="172.0" font-family="Archivo,sans-serif" font-size="10.5" fill="#7c848d" text-anchor="end">rejoin + resolve</text>
+<circle cx="1354" cy="185.5" r="8" fill="#e6a23c" stroke="#0b0c0f" stroke-width="1.6"/>
+<text x="1354" y="186.0" font-family="Archivo,sans-serif" font-size="10" font-weight="800" fill="#171108" text-anchor="middle" dominant-baseline="central">6</text>
+<text x="1370" y="189.5" font-family="JetBrains Mono,monospace" font-size="11.5" fill="#cfd4d9">git push</text>
+<text x="1610" y="189.5" font-family="Archivo,sans-serif" font-size="10.5" fill="#7c848d" text-anchor="end">→ remote</text>
+<rect width="1680" height="856" filter="url(#grain)" opacity="0.5" pointer-events="none"/>
+</svg>

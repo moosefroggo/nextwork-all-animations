@@ -1,0 +1,5 @@
+0000000000000000000000000000000000000000 b67f6e9b8a93f9bdf0080ea31b6eb234828a130f moosefroggo <m.alizz@hotmail.com> 1780438543 -0500	commit (initial): Initial commit: FluxFlow git workflow visualizer
+b67f6e9b8a93f9bdf0080ea31b6eb234828a130f b67f6e9b8a93f9bdf0080ea31b6eb234828a130f moosefroggo <m.alizz@hotmail.com> 1780438543 -0500	Branch: renamed refs/heads/master to refs/heads/main
+b67f6e9b8a93f9bdf0080ea31b6eb234828a130f b90779f44d4e063df18be2fe7c5dbdc510b1d13a moosefroggo <m.alizz@hotmail.com> 1780438665 -0500	commit: Rename app to nextwork-visualization
+b90779f44d4e063df18be2fe7c5dbdc510b1d13a 8842ea11afea68236975e5469d5856f63b1bf5ea moosefroggo <m.alizz@hotmail.com> 1780544965 -0500	commit: Add delivery and scratch views; remove lane concept
+8842ea11afea68236975e5469d5856f63b1bf5ea f22e6384c4acf5ab0b80c162deadb4eef3f3b944 moosefroggo <m.alizz@hotmail.com> 1780854788 -0500	commit: Add journey and magic views; wire up nav and build config

@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Animation Gallery</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: #0d0d0f;
+    color: #e8e8ec;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    height: 100vh;
+    display: flex;
+    overflow: hidden;
+  }
+
+  /* ── Sidebar ── */
+  aside {
+    width: 280px;
+    min-width: 280px;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    background: #111115;
+    border-right: 1px solid #1e1e26;
+  }
+
+  .sidebar-header {
+    padding: 20px 16px 14px;
+    border-bottom: 1px solid #1e1e26;
+  }
+
+  .sidebar-header h1 {
+    font-size: 15px;
+    font-weight: 700;
+    color: #fff;
+    letter-spacing: -0.3px;
+  }
+
+  .sidebar-header p {
+    font-size: 11px;
+    color: #555;
+    margin-top: 2px;
+  }
+
+  .search-wrap {
+    padding: 10px 12px;
+    border-bottom: 1px solid #1e1e26;
+  }
+
+  .search {
+    width: 100%;
+    padding: 7px 10px;
+    background: #1a1a20;
+    border: 1px solid #2a2a35;
+    border-radius: 7px;
+    color: #e8e8ec;
+    font-size: 12px;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+
+  .search:focus { border-color: #444; }
+  .search::placeholder { color: #444; }
+
+  .tabs {
+    display: flex;
+    gap: 0;
+    padding: 8px 12px;
+    border-bottom: 1px solid #1e1e26;
+  }
+
+  .tab {
+    flex: 1;
+    padding: 5px 4px;
+    border-radius: 6px;
+    border: none;
+    background: transparent;
+    color: #666;
+    font-size: 11px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+    text-align: center;
+  }
+
+  .tab:hover { color: #aaa; }
+  .tab.active { background: #222228; color: #fff; }
+
+  .list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 6px 8px;
+    scrollbar-width: thin;
+    scrollbar-color: #2a2a35 transparent;
+  }
+
+  .list::-webkit-scrollbar { width: 4px; }
+  .list::-webkit-scrollbar-track { background: transparent; }
+  .list::-webkit-scrollbar-thumb { background: #2a2a35; border-radius: 4px; }
+
+  .section-label {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.6px;
+    text-transform: uppercase;
+    color: #444;
+    padding: 10px 8px 4px;
+  }
+
+  .item {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    padding: 8px 10px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.1s;
+    border: 1px solid transparent;
+  }
+
+  .item:hover { background: #1a1a20; }
+
+  .item.active {
+    background: #1e1e28;
+    border-color: #2e2e3e;
+  }
+
+  .dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  .dot-threejs { background: #8b7fdf; }
+  .dot-htmlcss { background: #4db87a; }
+  .dot-svg     { background: #e07a40; }
+
+  .item-name {
+    font-size: 12px;
+    color: #c0c0cc;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    flex: 1;
+  }
+
+  .item.active .item-name { color: #fff; }
+
+  .item[hidden] { display: none; }
+
+  .empty-list {
+    text-align: center;
+    padding: 40px 0;
+    font-size: 12px;
+    color: #444;
+  }
+
+  /* ── Preview pane ── */
+  main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    overflow: hidden;
+  }
+
+  .preview-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 20px;
+    height: 48px;
+    min-height: 48px;
+    background: #0f0f13;
+    border-bottom: 1px solid #1e1e26;
+  }
+
+  .preview-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: #e0e0e8;
+  }
+
+  .preview-meta {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .badge {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.4px;
+    text-transform: uppercase;
+    padding: 2px 8px;
+    border-radius: 4px;
+  }
+
+  .badge-threejs { background: #1a1040; color: #8b7fdf; }
+  .badge-htmlcss { background: #0f2a1a; color: #4db87a; }
+  .badge-svg     { background: #2a1810; color: #e07a40; }
+
+  .open-btn {
+    font-size: 12px;
+    color: #888;
+    background: #1e1e28;
+    border: 1px solid #2a2a38;
+    border-radius: 6px;
+    padding: 4px 12px;
+    cursor: pointer;
+    text-decoration: none;
+    transition: color 0.15s, border-color 0.15s;
+  }
+
+  .open-btn:hover { color: #fff; border-color: #444; }
+
+  #preview-frame {
+    flex: 1;
+    min-height: 0;
+    width: 100%;
+    border: none;
+    background: #0a0a0c;
+    display: block;
+  }
+
+</style>
+</head>
+<body>
+
+<aside>
+  <div class="sidebar-header">
+    <h1>Animation Gallery</h1>
+    <p id="total-count">25 animations</p>
+  </div>
+
+  <div class="search-wrap">
+    <input class="search" type="search" placeholder="Search…" id="search">
+  </div>
+
+  <div class="tabs">
+    <button class="tab active" data-cat="all">All</button>
+    <button class="tab" data-cat="threejs">Three.js</button>
+    <button class="tab" data-cat="htmlcss">HTML/CSS</button>
+  </div>
+
+  <div class="list" id="list">
+
+    <div class="section-label" data-section="threejs">Three.js</div>
+
+    <div class="item" data-cat="threejs" data-src="threejs/3d.html" data-name="3D Git Visualizer">
+      <span class="dot dot-threejs"></span><span class="item-name">3D Git Visualizer</span>
+    </div>
+    <div class="item" data-cat="threejs" data-src="threejs/city.html" data-name="The Git City">
+      <span class="dot dot-threejs"></span><span class="item-name">The Git City</span>
+    </div>
+    <div class="item" data-cat="threejs" data-src="threejs/git-timeline-beats (1).html" data-name="Git Timeline">
+      <span class="dot dot-threejs"></span><span class="item-name">Git Timeline</span>
+    </div>
+    <div class="item" data-cat="threejs" data-src="threejs/git-timeline-spine.html" data-name="Fly-Through Timeline">
+      <span class="dot dot-threejs"></span><span class="item-name">Fly-Through Timeline</span>
+    </div>
+    <div class="item" data-cat="threejs" data-src="threejs/git-visualizer (4).html" data-name="The Package Room">
+      <span class="dot dot-threejs"></span><span class="item-name">The Package Room</span>
+    </div>
+    <div class="item" data-cat="threejs" data-src="threejs/index-2.html" data-name="Interactive Command Experience">
+      <span class="dot dot-threejs"></span><span class="item-name">Interactive Command Experience</span>
+    </div>
+    <div class="item" data-cat="threejs" data-src="threejs/remote.html" data-name="Local vs Remote">
+      <span class="dot dot-threejs"></span><span class="item-name">Local vs Remote</span>
+    </div>
+
+    <div class="section-label" data-section="htmlcss">HTML / CSS</div>
+
+    <div class="item" data-cat="htmlcss" data-src="html-css/journey.html" data-name="Journey of Code">
+      <span class="dot dot-htmlcss"></span><span class="item-name">Journey of Code <span style="color:#f5c518">★</span></span>
+    </div>
+    <div class="item" data-cat="htmlcss" data-src="html-css/auto.html" data-name="Automated Git Showcase">
+      <span class="dot dot-htmlcss"></span><span class="item-name">Automated Git Showcase</span>
+    </div>
+    <div class="item" data-cat="htmlcss" data-src="html-css/graph.html" data-name="Topological Graph">
+      <span class="dot dot-htmlcss"></span><span class="item-name">Topological Graph</span>
+    </div>
+    <div class="item" data-cat="htmlcss" data-src="html-css/index-2.html" data-name="Nodes">
+      <span class="dot dot-htmlcss"></span><span class="item-name">Nodes</span>
+    </div>
+    <div class="item" data-cat="htmlcss" data-src="html-css/index-3.html" data-name="Minimal Git Visualizer">
+      <span class="dot dot-htmlcss"></span><span class="item-name">Minimal Git Visualizer</span>
+    </div>
+    <div class="item" data-cat="htmlcss" data-src="html-css/index-5.html" data-name="Project Scaffold View">
+      <span class="dot dot-htmlcss"></span><span class="item-name">Project Scaffold View</span>
+    </div>
+    <div class="item" data-cat="htmlcss" data-src="html-css/magic.html" data-name="Magic of Branching">
+      <span class="dot dot-htmlcss"></span><span class="item-name">Magic of Branching</span>
+    </div>
+    <div class="item" data-cat="htmlcss" data-src="html-css/scratch.html" data-name="Git Scratch Pad">
+      <span class="dot dot-htmlcss"></span><span class="item-name">Git Scratch Pad</span>
+    </div>
+    <div class="item" data-cat="htmlcss" data-src="html-css/truck.html" data-name="The Delivery">
+      <span class="dot dot-htmlcss"></span><span class="item-name">The Delivery</span>
+    </div>
+    <div class="item" data-cat="htmlcss" data-src="html-css/workflow.html" data-name="Git Yard Workflow">
+      <span class="dot dot-htmlcss"></span><span class="item-name">Git Yard Workflow</span>
+    </div>
+
+    <div class="empty-list" id="empty-list" hidden>No results.</div>
+  </div>
+</aside>
+
+<main>
+  <div class="preview-bar">
+    <span class="preview-title" id="preview-title">Select an animation</span>
+    <div class="preview-meta">
+      <span class="badge" id="preview-badge" hidden></span>
+      <a class="open-btn" id="open-btn" href="#" target="_blank" hidden>Open in tab ↗</a>
+    </div>
+  </div>
+
+  <iframe id="preview-frame" src=""></iframe>
+</main>
+
+<script>
+  const items      = [...document.querySelectorAll('.item')];
+  const tabs       = [...document.querySelectorAll('.tab')];
+  const search     = document.getElementById('search');
+  const frame      = document.getElementById('preview-frame');
+  const titleEl    = document.getElementById('preview-title');
+  const badgeEl    = document.getElementById('preview-badge');
+  const openBtn    = document.getElementById('open-btn');
+  const emptyList  = document.getElementById('empty-list');
+  const totalCount = document.getElementById('total-count');
+  const sections   = [...document.querySelectorAll('.section-label')];
+
+  let activeCat = 'all';
+
+  const badgeClass = { threejs: 'badge-threejs', htmlcss: 'badge-htmlcss', svg: 'badge-svg' };
+  const badgeLabel = { threejs: 'Three.js', htmlcss: 'HTML/CSS', svg: 'SVG' };
+
+  function selectItem(item) {
+    items.forEach(i => i.classList.remove('active'));
+    item.classList.add('active');
+
+    const src  = item.dataset.src;
+    const name = item.dataset.name;
+    const cat  = item.dataset.cat;
+
+    titleEl.textContent = name;
+
+    badgeEl.className = 'badge ' + badgeClass[cat];
+    badgeEl.textContent = badgeLabel[cat];
+    badgeEl.hidden = false;
+
+    openBtn.href = src;
+    openBtn.hidden = false;
+
+    frame.src = src;
+  }
+
+  items.forEach(item => item.addEventListener('click', () => selectItem(item)));
+
+  function filter() {
+    const q = search.value.toLowerCase().trim();
+    let visible = 0;
+
+    items.forEach(item => {
+      const catMatch  = activeCat === 'all' || item.dataset.cat === activeCat;
+      const nameMatch = !q || item.dataset.name.toLowerCase().includes(q);
+      const show = catMatch && nameMatch;
+      item.hidden = !show;
+      if (show) visible++;
+    });
+
+    // Show/hide section labels
+    sections.forEach(label => {
+      const cat = label.dataset.section;
+      const anyVisible = items.some(i => i.dataset.cat === cat && !i.hidden);
+      label.hidden = !anyVisible || (activeCat !== 'all' && activeCat !== cat);
+    });
+
+    emptyList.hidden = visible > 0;
+    totalCount.textContent = visible + ' animations';
+  }
+
+  tabs.forEach(tab => {
+    tab.addEventListener('click', () => {
+      tabs.forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      activeCat = tab.dataset.cat;
+      filter();
+    });
+  });
+
+  search.addEventListener('input', filter);
+
+  // Select first item by default
+  if (items.length) selectItem(items[0]);
+</script>
+</body>
+</html>

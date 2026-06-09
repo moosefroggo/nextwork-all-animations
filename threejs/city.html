@@ -1,0 +1,565 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>The Git City — Nextwork</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0e1016; --bg2:#11141d;
+  --panel:#161a25; --panel2:#1b2030;
+  --line:rgba(255,255,255,.08); --line2:rgba(255,255,255,.16);
+  --txt:#e7eaf2; --muted:#8a93a8; --faint:#5b6477;
+  --main:#a78bfa; --feat:#34d399; --merge:#fbbf24; --r:14px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{
+  background:
+    radial-gradient(900px 500px at 20% -10%, rgba(167,139,250,.09), transparent 55%),
+    radial-gradient(700px 400px at 85% -8%,  rgba(52,211,153,.08), transparent 55%),
+    var(--bg);
+  color:var(--txt); font-family:'Inter',system-ui,sans-serif;
+  min-height:100vh; display:flex; flex-direction:column; align-items:center;
+  padding:72px 20px 48px; gap:20px;
+}
+
+/* nav */
+.page-switch{
+  position:fixed; top:14px; left:50%; transform:translateX(-50%);
+  z-index:100; display:flex; gap:4px;
+  background:rgba(22,26,37,.85); backdrop-filter:blur(10px);
+  border:1px solid var(--line2); border-radius:999px; padding:4px;
+}
+.page-switch a{
+  text-decoration:none; color:var(--muted); font-size:.8rem; font-weight:500;
+  padding:6px 15px; border-radius:999px; transition:all .15s;
+}
+.page-switch a:hover{background:rgba(255,255,255,.06); color:var(--txt)}
+.page-switch a.active{background:rgba(167,139,250,.16); color:var(--main)}
+
+/* title */
+.title{text-align:center}
+.title h1{font-size:1.28rem;font-weight:700;letter-spacing:-.01em}
+.title p{font-size:.86rem;color:var(--muted);margin-top:4px}
+
+/* stage */
+.stage{
+  width:100%; max-width:1100px; height:400px;
+  border:1px solid var(--line); border-radius:var(--r);
+  overflow:hidden; position:relative; background:var(--bg);
+}
+#city-canvas{ width:100%; height:100%; display:block; }
+
+/* district labels */
+.dist-label{
+  position:absolute; font-size:.62rem; font-weight:700;
+  text-transform:uppercase; letter-spacing:.09em;
+  padding:5px 13px; border-radius:999px;
+  border:1px solid var(--line2);
+  background:rgba(14,16,22,.82); backdrop-filter:blur(6px);
+  transition:color .5s, border-color .5s;
+  pointer-events:none;
+}
+#lbl-local{ top:14px; left:14px; color:var(--main); border-color:rgba(167,139,250,.3); }
+#lbl-remote{ bottom:14px; right:14px; color:var(--faint); border-color:rgba(255,255,255,.08); }
+#lbl-remote.connected{ color:var(--feat); border-color:rgba(52,211,153,.3); }
+
+/* terminal */
+.terminal{
+  width:100%; max-width:620px; background:#0a0c12;
+  border:1px solid var(--line2); border-radius:12px; overflow:hidden;
+}
+.term-bar{
+  display:flex;align-items:center;gap:6px;
+  padding:8px 12px;background:rgba(255,255,255,.03);border-bottom:1px solid var(--line);
+}
+.term-bar i{width:10px;height:10px;border-radius:50%;display:inline-block}
+.term-bar i:nth-child(1){background:#ff5f56}
+.term-bar i:nth-child(2){background:#ffbd2e}
+.term-bar i:nth-child(3){background:#27c93f}
+.term-bar .term-path{
+  margin-left:8px;font-size:.62rem;color:var(--faint);font-family:'JetBrains Mono',monospace;
+}
+.term-bar .branch-indicator{ color:var(--main); }
+.term-body{
+  padding:12px 14px;min-height:40px;
+  font-family:'JetBrains Mono',monospace;font-size:.82rem;
+  display:flex;align-items:center;
+}
+.term-body .prompt{color:var(--feat);margin-right:8px;flex-shrink:0}
+.term-body .cmd{color:var(--txt)}
+.term-body .cursor{
+  display:inline-block;width:8px;height:1.05em;
+  vertical-align:-2px;background:var(--txt);margin-left:2px;
+  animation:blink 1s step-end infinite;
+}
+@keyframes blink{50%{opacity:0}}
+
+/* readout */
+.readout{width:100%;max-width:1100px;display:flex;flex-direction:column;gap:10px;align-items:center}
+.caption{
+  text-align:center;font-size:1rem;font-weight:500;color:var(--txt);
+  min-height:1.5em;max-width:740px;line-height:1.6;
+}
+.caption b{font-weight:700}
+.caption b.p{color:var(--main)}
+.caption b.g{color:var(--feat)}
+.caption b.y{color:var(--merge)}
+.caption code{
+  font-family:'JetBrains Mono',monospace;font-size:.82em;
+  background:rgba(255,255,255,.07);padding:1px 6px;border-radius:4px;color:var(--txt);
+}
+.replay{
+  display:flex;align-items:center;gap:8px;padding:10px 20px;border-radius:999px;
+  background:rgba(255,255,255,.04);border:1px solid var(--line2);color:var(--txt);
+  font:inherit;font-size:.85rem;font-weight:500;cursor:pointer;transition:all .15s;
+  opacity:0;pointer-events:none;
+}
+.replay.show{opacity:1;pointer-events:auto}
+.replay:hover{border-color:var(--main);background:rgba(167,139,250,.1)}
+.replay svg{width:15px;height:15px}
+</style>
+</head>
+<body>
+
+
+
+<div class="title">
+  <h1>The Git City</h1>
+  <p>your machine &rarr; GitHub, as an isometric city</p>
+</div>
+
+<div class="stage" id="stage">
+  <canvas id="city-canvas"></canvas>
+  <div class="dist-label" id="lbl-local">Local — your machine</div>
+  <div class="dist-label" id="lbl-remote">Remote — not connected</div>
+</div>
+
+<div class="readout">
+  <div class="terminal">
+    <div class="term-bar">
+      <i></i><i></i><i></i>
+      <span class="term-path" id="term-path">~</span>
+    </div>
+    <div class="term-body">
+      <span class="prompt">$</span>
+      <span class="cmd" id="cmd"></span>
+      <span class="cursor" id="cursor"></span>
+    </div>
+  </div>
+  <div class="caption" id="caption"></div>
+  <button class="replay" id="replay">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>
+    Replay
+  </button>
+</div>
+
+<script type="module">
+import * as THREE from 'https://unpkg.com/three@0.166.1/build/three.module.js';
+
+// ── constants ─────────────────────────────────────────────────────────────────
+const SPEED       = 1;
+const ms          = n => n / SPEED;
+const sleep       = n => new Promise(r => setTimeout(r, ms(n)));
+const $           = id => document.getElementById(id);
+
+// scene positions
+const LX = -5,  LZ = 0;   // local main building
+const BX = -5,  BZ = 2.8; // branch building
+const RX =  5,  RZ = 0;   // remote cluster center
+
+// colors
+const C_BODY   = 0xbec2d4;
+const C_MAIN   = 0xa78bfa;
+const C_FEAT   = 0x34d399;
+const C_MERGE  = 0xfbbf24;
+const C_REMOTE = 0x9ca3b5;
+const C_GROUND = 0x161a25;
+const C_ROAD   = 0x1e2436;
+const C_PLAT_L = 0x1b2133;
+const C_PLAT_R = 0x181e2e;
+
+// ── Three.js setup ────────────────────────────────────────────────────────────
+const stage  = $('stage');
+const canvas = $('city-canvas');
+
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setClearColor(0x0e1016);
+
+const scene = new THREE.Scene();
+
+// orthographic isometric camera
+const FRUST = 4.2;
+let aspect = stage.clientWidth / stage.clientHeight;
+const camera = new THREE.OrthographicCamera(
+  -FRUST * aspect, FRUST * aspect, FRUST, -FRUST, 0.1, 200
+);
+camera.position.set(14, 14, 14);
+camera.lookAt(0, 0.5, 0);
+
+// lighting
+scene.add(new THREE.AmbientLight(0x4a4e6a, 2.2));
+const sun = new THREE.DirectionalLight(0xffffff, 2.8);
+sun.position.set(8, 12, 6);
+scene.add(sun);
+const fill = new THREE.DirectionalLight(0x7080a0, 1.0);
+fill.position.set(-6, 4, -8);
+scene.add(fill);
+
+// ── static geometry (ground, road) ───────────────────────────────────────────
+function staticBox(w, h, d, color, px, py, pz) {
+  const m = new THREE.Mesh(
+    new THREE.BoxGeometry(w, h, d),
+    new THREE.MeshLambertMaterial({ color })
+  );
+  m.position.set(px, py, pz);
+  scene.add(m);
+  return m;
+}
+
+staticBox(24, 0.10, 14, C_GROUND, 0, -0.05, 0);  // world floor
+staticBox( 6, 0.12,  3, C_ROAD,   0,  0,    0);  // road strip between districts
+
+// ── story-object tracking ─────────────────────────────────────────────────────
+let story = [];
+
+function tracked(obj) {
+  story.push(obj);
+  scene.add(obj);
+  return obj;
+}
+
+function disposeGroup(g) {
+  g.traverse(c => {
+    if (c.isMesh) {
+      c.geometry.dispose();
+      if (Array.isArray(c.material)) c.material.forEach(m => m.dispose());
+      else c.material.dispose();
+    }
+  });
+}
+
+// ── building helpers ──────────────────────────────────────────────────────────
+function mat(color) { return new THREE.MeshLambertMaterial({ color }); }
+
+// Creates a box whose BOTTOM sits at local y=0, so scale.y grows upward
+function bottomBox(w, h, d, color) {
+  const geo = new THREE.BoxGeometry(w, h, d);
+  geo.translate(0, h / 2, 0);
+  return new THREE.Mesh(geo, mat(color));
+}
+
+// A floor group: body + thin accent cap, bottom at y=0
+function makeFloor(w, h, d, bodyColor, capColor) {
+  const g = new THREE.Group();
+  g.add(bottomBox(w, h - 0.08, d, bodyColor));
+  const cap = bottomBox(w + 0.06, 0.09, d + 0.06, capColor);
+  cap.position.y = h - 0.08;
+  g.add(cap);
+  return g;
+}
+
+// Animate scale.y from near-0 to 1 with slight overshoot
+function riseGroup(group, dur = 700) {
+  return new Promise(resolve => {
+    group.scale.y = 0.001;
+    const t0 = performance.now();
+    function tick() {
+      const raw = Math.min((performance.now() - t0) / ms(dur), 1);
+      let s = raw < 0.62
+        ? (raw / 0.62) * 1.09
+        : 1.09 - ((raw - 0.62) / 0.38) * 0.09;
+      group.scale.y = Math.max(0.001, s);
+      if (raw < 1) requestAnimationFrame(tick);
+      else { group.scale.y = 1; resolve(); }
+    }
+    requestAnimationFrame(tick);
+  });
+}
+
+// Add a floor at baseY on top of any existing stack
+async function addFloor(wx, wz, baseY, floorH, bodyColor, capColor) {
+  const g = makeFloor(0.85, floorH, 0.85, bodyColor, capColor);
+  g.position.set(wx, baseY, wz);
+  tracked(g);
+  await riseGroup(g, 680);
+  return g;
+}
+
+// ── platform helpers ──────────────────────────────────────────────────────────
+async function risePlatform(px, pz, w, d, color) {
+  const g = new THREE.Group();
+  const geo = new THREE.BoxGeometry(w, 0.14, d);
+  geo.translate(0, 0.07, 0);
+  g.add(new THREE.Mesh(geo, mat(color)));
+  g.position.set(px, 0, pz);
+  tracked(g);
+  await riseGroup(g, 550);
+  return g;
+}
+
+// ── bridge / connector ────────────────────────────────────────────────────────
+async function riseConnector(ax, ay, az, bx, by, bz, color) {
+  const dx = bx - ax, dy = by - ay, dz = bz - az;
+  const len = Math.sqrt(dx*dx + dy*dy + dz*dz);
+  const g = new THREE.Group();
+  const geo = new THREE.BoxGeometry(0.22, 0.22, len);
+  geo.translate(0, 0, len / 2); // origin at one end
+  g.add(new THREE.Mesh(geo, mat(color)));
+  g.position.set(ax, ay, az);
+  g.lookAt(bx, by, bz);
+  tracked(g);
+  // grow scale.z from 0 to 1
+  return new Promise(resolve => {
+    g.scale.z = 0.001;
+    const t0 = performance.now();
+    function tick() {
+      const raw = Math.min((performance.now() - t0) / ms(650), 1);
+      const t = raw < 0.5 ? 2*raw*raw : -1 + (4 - 2*raw)*raw;
+      g.scale.z = Math.max(0.001, t);
+      if (raw < 1) requestAnimationFrame(tick);
+      else { g.scale.z = 1; resolve(); }
+    }
+    requestAnimationFrame(tick);
+  });
+}
+
+// ── particle travel ───────────────────────────────────────────────────────────
+async function travelParticles(sx, sy, sz, ex, ey, ez, count, color) {
+  const geoS = new THREE.SphereGeometry(0.14, 7, 7);
+  const start = new THREE.Vector3(sx, sy, sz);
+  const end   = new THREE.Vector3(ex, ey, ez);
+
+  const promises = [];
+  for (let i = 0; i < count; i++) {
+    if (i > 0) await sleep(190);
+    const mesh = new THREE.Mesh(geoS.clone(), mat(color));
+    mesh.position.copy(start);
+    scene.add(mesh);
+    promises.push(new Promise(res => {
+      const t0 = performance.now();
+      const dur = ms(1100);
+      function tick() {
+        const raw = Math.min((performance.now() - t0) / dur, 1);
+        const t = raw < 0.5 ? 2*raw*raw : -1 + (4-2*raw)*raw;
+        mesh.position.lerpVectors(start, end, t);
+        mesh.position.y = start.y + Math.sin(raw * Math.PI) * 2.2;
+        if (raw < 1) requestAnimationFrame(tick);
+        else { scene.remove(mesh); mesh.geometry.dispose(); mesh.material.dispose(); res(); }
+      }
+      requestAnimationFrame(tick);
+    }));
+  }
+  await Promise.all(promises);
+}
+
+// ── camera pan ────────────────────────────────────────────────────────────────
+const camTarget = new THREE.Vector3(0, 0.5, 0);
+const CAM_OFFSET = new THREE.Vector3(14, 14, 14);
+
+function panTo(tx, ty, tz, dur = 900) {
+  return new Promise(resolve => {
+    const from = camTarget.clone();
+    const to   = new THREE.Vector3(tx, ty, tz);
+    const t0   = performance.now();
+    function tick() {
+      const raw = Math.min((performance.now() - t0) / ms(dur), 1);
+      const t = raw < 0.5 ? 2*raw*raw : -1 + (4-2*raw)*raw;
+      camTarget.lerpVectors(from, to, t);
+      camera.position.copy(camTarget).add(CAM_OFFSET);
+      camera.lookAt(camTarget);
+      if (raw < 1) requestAnimationFrame(tick);
+      else resolve();
+    }
+    requestAnimationFrame(tick);
+  });
+}
+
+// ── terminal ──────────────────────────────────────────────────────────────────
+let typeToken = 0;
+async function type(text) {
+  const tok = ++typeToken;
+  $('cmd').textContent = '';
+  for (const ch of text) {
+    if (tok !== typeToken) return;
+    $('cmd').textContent += ch;
+    await sleep(38);
+  }
+}
+function clearTerm() { typeToken++; $('cmd').textContent = ''; }
+function say(html) { $('caption').innerHTML = html; }
+function setPath(p, branch = '') {
+  const el = $('term-path');
+  el.textContent = p + (branch ? ' ' : '');
+  if (branch) {
+    const s = document.createElement('span');
+    s.className = 'branch-indicator';
+    s.textContent = '(' + branch + ')';
+    el.appendChild(s);
+  }
+}
+
+// ── resize ────────────────────────────────────────────────────────────────────
+function onResize() {
+  const w = stage.clientWidth, h = stage.clientHeight;
+  aspect = w / h;
+  camera.left = -FRUST * aspect; camera.right = FRUST * aspect;
+  camera.top = FRUST; camera.bottom = -FRUST;
+  camera.updateProjectionMatrix();
+  renderer.setSize(w, h, false);
+}
+window.addEventListener('resize', onResize);
+onResize();
+
+// ── render loop ───────────────────────────────────────────────────────────────
+(function animate() { requestAnimationFrame(animate); renderer.render(scene, camera); })();
+
+// ── reset ─────────────────────────────────────────────────────────────────────
+let localH = 0; // current height of main local stack
+
+function resetScene() {
+  story.forEach(g => { scene.remove(g); disposeGroup(g); });
+  story = [];
+  localH = 0;
+  $('lbl-remote').className = 'dist-label';
+  $('lbl-remote').textContent = 'Remote — not connected';
+  $('replay').classList.remove('show');
+  $('cursor').style.display = '';
+  clearTerm(); say('');
+  setPath('~');
+  camTarget.set(0, 0.5, 0);
+  camera.position.copy(camTarget).add(CAM_OFFSET);
+  camera.lookAt(camTarget);
+}
+
+// ── main sequence ─────────────────────────────────────────────────────────────
+async function run() {
+  resetScene();
+  await sleep(700);
+
+  // ── Beat 1: empty lots ──────────────────────────────────────────────────────
+  say('Every developer starts here — an empty folder on their machine, and a blank slot on GitHub waiting to be filled.');
+  panTo(-1.5, 0.5, 0, 600);
+  await sleep(3400);
+
+  // ── Beat 2: git init ────────────────────────────────────────────────────────
+  clearTerm();
+  say('<code>git init</code> pours the foundation. A hidden <code>.git/</code> folder appears — the engine that will track every change from this moment on.');
+  await type('mkdir git-learning-log && cd git-learning-log');
+  setPath('~/git-learning-log');
+  await sleep(400);
+  clearTerm();
+  await type('git init');
+  await sleep(300);
+  await risePlatform(LX, LZ + 1.4, 4.2, 5.4, C_PLAT_L);
+  setPath('~/git-learning-log', 'main');
+  await sleep(2600);
+
+  // ── Beat 3: first commit ────────────────────────────────────────────────────
+  clearTerm();
+  say('Your first commit. A snapshot of <code>learning-log.md</code>, saved forever. The first building rises on your block.');
+  await type('git add learning-log.md');
+  await sleep(500);
+  clearTerm();
+  await type('git commit -m "Add initial learning log"');
+  await sleep(350);
+  await addFloor(LX, LZ, 0, 0.95, C_BODY, C_MAIN);
+  localH = 0.95;
+  await sleep(2500);
+
+  // ── Beat 4: second commit ───────────────────────────────────────────────────
+  clearTerm();
+  say('Every new commit adds a floor. The building grows — so does your history.');
+  await type('git commit -m "Add What I Learned section"');
+  await sleep(350);
+  await addFloor(LX, LZ, localH, 0.80, C_BODY, C_MAIN);
+  localH += 0.80;
+  await sleep(2400);
+
+  // ── Beat 5: branch ──────────────────────────────────────────────────────────
+  clearTerm();
+  say('A new idea. Instead of risking the main building, you <b class="p">branch</b> — a fresh construction site on a side street, completely separate.');
+  await type('git checkout -b add-resources');
+  await sleep(500);
+  setPath('~/git-learning-log', 'add-resources');
+  // fork road from main to branch position
+  await riseConnector(LX - 0.42, 0.13, LZ, LX - 0.42, 0.13, BZ - 0.42, C_FEAT);
+  await sleep(2500);
+
+  // ── Beat 6: commits on both branches ───────────────────────────────────────
+  clearTerm();
+  say('Two branches, two buildings under construction — simultaneously. The same <code>.git/</code> folder holds both timelines safely.');
+  await type('git commit -m "Expand learning notes on branches"');
+  await sleep(350);
+  const branchP = addFloor(BX, BZ, 0, 1.10, C_BODY, C_FEAT);
+  // switch to main and commit there too
+  await sleep(300);
+  clearTerm();
+  await type('git checkout main');
+  setPath('~/git-learning-log', 'main');
+  await sleep(300);
+  clearTerm();
+  await type('git commit -m "Rewrite with time machine analogy"');
+  await sleep(300);
+  const mainP = addFloor(LX, LZ, localH, 0.72, C_BODY, C_MAIN);
+  await Promise.all([branchP, mainP]);
+  localH += 0.72;
+  await sleep(2500);
+
+  // ── Beat 7: merge ───────────────────────────────────────────────────────────
+  clearTerm();
+  say('<code>git merge</code> resolves the conflict and weaves both timelines into one. A bridge connects the two buildings — <b class="y">both lines of work preserved</b>.');
+  await type('git merge add-resources');
+  await sleep(600);
+  // bridge from top of main building across to branch building top
+  const bridgeY = localH + 0.18;
+  const branchTopY = 1.10 + 0.18;
+  await riseConnector(LX, bridgeY, LZ + 0.42, BX, branchTopY, BZ - 0.42, C_MERGE);
+  await sleep(2700);
+
+  // ── Beat 8: git push ────────────────────────────────────────────────────────
+  clearTerm();
+  say('<code>git push</code> ships your entire history to GitHub. Watch the commits travel across.');
+  await type('git remote add origin https://github.com/you/git-learning-log.git');
+  await sleep(600);
+  $('lbl-remote').className = 'dist-label connected';
+  $('lbl-remote').textContent = 'Remote — github.com';
+  clearTerm();
+  await type('git push -u origin main');
+  await sleep(400);
+  // pan slightly toward road midpoint
+  panTo(0, 1.2, 0, 800);
+  await travelParticles(LX + 0.42, localH * 0.5 + 0.3, LZ, RX - 0.5, 1, RZ, 3, C_MAIN);
+
+  // remote district platform + buildings appear
+  await risePlatform(RX, RZ, 3.8, 4.2, C_PLAT_R);
+  await addFloor(RX - 0.9, RZ - 0.6, 0, 1.50, C_REMOTE, C_MAIN);
+  await sleep(130);
+  await addFloor(RX + 0.3, RZ + 0.7, 0, 2.00, C_REMOTE, C_MAIN);
+  await sleep(130);
+  await addFloor(RX + 1.0, RZ - 0.5, 0, 1.20, C_REMOTE, C_MAIN);
+  await sleep(2600);
+
+  // ── Beat 9: both sides visible ──────────────────────────────────────────────
+  panTo(0, 0.8, 0, 1000);
+  say('GitHub is your project\'s permanent address on the internet. Anyone with the link can browse your full commit history.');
+  await sleep(3000);
+
+  // ── Beat 10: done ───────────────────────────────────────────────────────────
+  clearTerm();
+  say('<b class="p">Local</b> is where you build. <b class="g">Remote</b> is where you share. Every commit is a floor — and now the whole city is live on GitHub.');
+  $('cursor').style.display = 'none';
+  await sleep(700);
+  $('replay').classList.add('show');
+}
+
+$('replay').addEventListener('click', run);
+window.addEventListener('load', run);
+</script>
+</body>
+</html>

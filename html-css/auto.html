@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Git Automated Showcase</title>
+    <link rel="stylesheet" href="style-4.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=Fira+Code:wght@500&display=swap" rel="stylesheet">
+</head>
+<body>
+    
+
+    <!-- Terminal Popup Overlay -->
+    <div class="terminal-popup" id="terminal-popup">
+        <span class="prompt">$</span> <span id="terminal-text"></span>
+    </div>
+
+    <div class="pipeline">
+        
+        <!-- Local Environment -->
+        <div class="environment env-local">
+            <div class="env-title">🖥️ Local Machine (Your Disk)</div>
+            <div class="env-zones">
+                <div class="zone" id="zone-working">
+                    <div class="zone-title">Working Dir</div>
+                </div>
+                <div class="arrow">→</div>
+                <div class="zone" id="zone-staging">
+                    <div class="zone-title">Staging</div>
+                </div>
+                <div class="arrow">→</div>
+                <div class="zone" id="zone-local">
+                    <div class="zone-title">Local Repo</div>
+                    <div class="commit-history" id="local-history"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Network Boundary -->
+        <div class="network-gap">
+            <div class="network-line"></div>
+            <div class="arrow push-arrow">→</div>
+            <div class="network-label">Internet</div>
+            <div class="network-line"></div>
+        </div>
+
+        <!-- Remote Environment -->
+        <div class="environment env-remote">
+            <div class="env-title">☁️ Remote Server</div>
+            <div class="env-zones">
+                <div class="zone" id="zone-remote">
+                    <div class="zone-title">GitHub</div>
+                    <div class="commit-history" id="remote-history"></div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Files will be injected here by JS -->
+        <div id="file-container"></div>
+    </div>
+    
+    <div class="bottom-controls" style="display: flex; justify-content: center;">
+        <button id="btn-replay" class="reset-btn" style="padding: 12px 24px; font-size: 14px; margin-top: 20px; display: flex; align-items: center; gap: 8px;">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M8 5v14l11-7z"/>
+            </svg>
+            Replay Animation Sequence
+        </button>
+    </div>
+    
+    <script src="auto.js"></script>
+</body>
+</html>

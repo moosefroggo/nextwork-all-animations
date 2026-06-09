@@ -1,0 +1,558 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Git, as a timeline you fly through</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#06070d;
+    --ink:#cdd6f0;
+    --dim:#5b6580;
+    --main:#7fe7ff;
+    --branch:#ffb454;
+    --conflict:#ff4d5e;
+    --resolved:#ffe6b0;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%;background:var(--bg);overflow:hidden;color:var(--ink);font-family:"IBM Plex Mono",monospace}
+  #c{position:fixed;inset:0;display:block}
+
+  /* ---- chrome ---- */
+  .frame{position:fixed;inset:0;pointer-events:none;z-index:5}
+  .corner{position:absolute;width:26px;height:26px;border:1px solid rgba(127,231,255,.28)}
+  .corner.tl{top:18px;left:18px;border-right:0;border-bottom:0}
+  .corner.tr{top:18px;right:18px;border-left:0;border-bottom:0}
+  .corner.bl{bottom:18px;left:18px;border-right:0;border-top:0}
+  .corner.br{bottom:18px;right:18px;border-left:0;border-top:0}
+
+  .head{position:fixed;top:30px;left:34px;z-index:6;pointer-events:none}
+  .head .k{font-family:"Chakra Petch";font-weight:600;letter-spacing:.32em;font-size:11px;color:var(--dim);text-transform:uppercase}
+  .head .t{font-family:"Chakra Petch";font-weight:500;font-size:19px;letter-spacing:.02em;margin-top:6px;color:var(--ink)}
+
+  .legend{position:fixed;top:32px;right:46px;z-index:6;pointer-events:none;text-align:right;font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;line-height:2.1;color:var(--dim)}
+  .legend i{display:inline-block;width:8px;height:8px;margin-left:9px;vertical-align:middle;border-radius:1px}
+
+  /* ---- caption ---- */
+  .cap{position:fixed;left:50%;bottom:108px;transform:translateX(-50%);z-index:6;text-align:center;width:min(680px,86vw);pointer-events:none}
+  .cap .cmd{font-family:"Chakra Petch";font-weight:600;font-size:13px;letter-spacing:.16em;color:var(--main);text-transform:uppercase;transition:color .5s}
+  .cap .desc{margin-top:9px;font-size:13.5px;line-height:1.6;color:var(--ink);opacity:.9}
+  .cap.fade{animation:capin .6s ease both}
+  @keyframes capin{from{opacity:0;transform:translateX(-50%) translateY(8px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
+
+  /* ---- transport ---- */
+  .bar{position:fixed;left:50%;bottom:34px;transform:translateX(-50%);z-index:7;display:flex;align-items:center;gap:18px;width:min(680px,86vw)}
+  .play{pointer-events:auto;flex:0 0 auto;width:44px;height:44px;border-radius:50%;border:1px solid rgba(127,231,255,.35);background:rgba(127,231,255,.06);color:var(--main);cursor:pointer;display:grid;place-items:center;transition:.25s;backdrop-filter:blur(4px)}
+  .play:hover{background:rgba(127,231,255,.14);border-color:var(--main)}
+  .play svg{width:15px;height:15px;fill:currentColor}
+  .track{position:relative;flex:1;height:42px;display:flex;align-items:center}
+  .track input{-webkit-appearance:none;appearance:none;width:100%;height:2px;background:rgba(205,214,240,.16);outline:none;cursor:pointer;border-radius:2px}
+  .track input::-webkit-slider-thumb{-webkit-appearance:none;width:13px;height:13px;border-radius:50%;background:var(--main);box-shadow:0 0 14px 2px rgba(127,231,255,.7);cursor:grab}
+  .track input::-moz-range-thumb{width:13px;height:13px;border:0;border-radius:50%;background:var(--main);box-shadow:0 0 14px 2px rgba(127,231,255,.7);cursor:grab}
+  .ticks{position:absolute;inset:0;pointer-events:none}
+  .ticks span{position:absolute;top:50%;width:2px;height:2px;border-radius:50%;background:var(--dim);transform:translate(-50%,-50%)}
+  .pct{flex:0 0 auto;font-family:"Chakra Petch";font-weight:500;font-size:11px;letter-spacing:.12em;color:var(--dim);min-width:38px;text-align:right}
+
+  .hint{position:fixed;left:50%;bottom:84px;transform:translateX(-50%);z-index:6;font-size:10px;letter-spacing:.22em;text-transform:uppercase;color:var(--dim);opacity:.55;pointer-events:none}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+
+<div class="frame">
+  <div class="corner tl"></div><div class="corner tr"></div>
+  <div class="corner bl"></div><div class="corner br"></div>
+</div>
+
+<div class="head">
+  <div class="k">// concept sketch</div>
+  <div class="t">Git &mdash; a history you fly through</div>
+</div>
+
+<div class="legend">
+  main<i style="background:var(--main)"></i><br>
+  add-resources<i style="background:var(--branch)"></i><br>
+  conflict<i style="background:var(--conflict)"></i>
+</div>
+
+<div class="cap" id="cap">
+  <div class="cmd" id="capCmd">git init</div>
+  <div class="desc" id="capDesc">Your file becomes the first snapshot in a history.</div>
+</div>
+
+<div class="hint">scrub to move through time &middot; this <em>is</em> the git history</div>
+
+<div class="bar">
+  <button class="play" id="play" aria-label="play / pause"><svg id="pIcon" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></button>
+  <div class="track">
+    <div class="ticks" id="ticks"></div>
+    <input id="scrub" type="range" min="0" max="1000" value="0" />
+  </div>
+  <div class="pct" id="pct">00%</div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+/* ------------------------------------------------------------------ *
+ *  GIT TIMELINE — SPINE SKETCH
+ *  One continuous dolly down a track of glowing snapshot slabs.
+ *  Branch peels off, conflict fractures, merge braids, push rises.
+ *  Unlit neon-vector look: fog for depth, additive halos for glow.
+ * ------------------------------------------------------------------ */
+
+const COL = {
+  bg:        0x06070d,
+  main:      0x7fe7ff,
+  branch:    0xffb454,
+  conflict:  0xff4d5e,
+  resolved:  0xffe6b0,
+  grid:      0x16203a,
+  gridUp:    0x123040
+};
+
+const clamp  = (v,a,b)=>Math.min(b,Math.max(a,v));
+const lerp   = (a,b,t)=>a+(b-a)*t;
+const smooth = (e0,e1,x)=>{ const t=clamp((x-e0)/(e1-e0),0,1); return t*t*(3-2*t); };
+// bump: 0 at edges, 1 in the middle of [a,b]
+const bump   = (a,b,x)=>{ const m=(a+b)/2; return x<m ? smooth(a,m,x) : 1-smooth(m,b,x); };
+
+// ---- renderer / scene / camera ----
+const canvas = document.getElementById('c');
+const renderer = new THREE.WebGLRenderer({canvas, antialias:true, alpha:false});
+renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
+renderer.outputEncoding = THREE.sRGBEncoding;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.15;
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(COL.bg);
+scene.fog = new THREE.FogExp2(COL.bg, 0.026);
+
+const camera = new THREE.PerspectiveCamera(52, 1, 0.1, 200);
+
+function resize(){
+  const w = window.innerWidth, h = window.innerHeight;
+  renderer.setSize(w,h);
+  camera.aspect = w/h;
+  camera.updateProjectionMatrix();
+}
+window.addEventListener('resize', resize);
+
+// ------------------------------------------------------------------
+// helpers for the neon-vector vocabulary
+// ------------------------------------------------------------------
+
+// soft radial halo as an additive sprite-ish plane that always glows
+function halo(color, size, intensity){
+  const cv = document.createElement('canvas');
+  cv.width = cv.height = 128;
+  const ctx = cv.getContext('2d');
+  const g = ctx.createRadialGradient(64,64,0,64,64,64);
+  const c = new THREE.Color(color);
+  const rgb = `${(c.r*255)|0},${(c.g*255)|0},${(c.b*255)|0}`;
+  g.addColorStop(0, `rgba(${rgb},${intensity})`);
+  g.addColorStop(0.4, `rgba(${rgb},${intensity*0.4})`);
+  g.addColorStop(1, `rgba(${rgb},0)`);
+  ctx.fillStyle = g; ctx.fillRect(0,0,128,128);
+  const tex = new THREE.CanvasTexture(cv);
+  const mat = new THREE.SpriteMaterial({map:tex, blending:THREE.AdditiveBlending, depthWrite:false, transparent:true});
+  const s = new THREE.Sprite(mat);
+  s.scale.set(size,size,1);
+  return s;
+}
+
+// markdown etched onto a transparent face → MeshBasic so it self-glows
+function faceTexture(lines, hex){
+  const W=512, H=320;
+  const cv = document.createElement('canvas');
+  cv.width=W; cv.height=H;
+  const ctx = cv.getContext('2d');
+  ctx.clearRect(0,0,W,H);
+  ctx.font = "500 30px 'IBM Plex Mono', monospace";
+  ctx.textBaseline = 'top';
+  let y = 40;
+  for(const ln of lines){
+    ctx.fillStyle = ln.dim ? 'rgba(205,214,240,.45)' : hex;
+    ctx.fillText(ln.t, 44, y);
+    y += 44;
+  }
+  const tex = new THREE.CanvasTexture(cv);
+  tex.encoding = THREE.sRGBEncoding;
+  return tex;
+}
+
+// label sprite (branch names, conflict markers)
+function label(text, hex, scale=1){
+  const W=512,H=128;
+  const cv=document.createElement('canvas'); cv.width=W; cv.height=H;
+  const ctx=cv.getContext('2d');
+  ctx.font="600 64px 'Chakra Petch', sans-serif";
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillStyle=hex; ctx.fillText(text, W/2, H/2);
+  const tex=new THREE.CanvasTexture(cv); tex.encoding=THREE.sRGBEncoding;
+  const mat=new THREE.SpriteMaterial({map:tex, transparent:true, depthWrite:false});
+  const s=new THREE.Sprite(mat);
+  s.scale.set(2.2*scale, 0.55*scale, 1);
+  return s;
+}
+
+// A snapshot slab. Returns {group, set(reveal)} so progress drives its glow.
+function snapshot(pos, color, lines){
+  const g = new THREE.Group();
+  g.position.copy(pos);
+  const w=2.4, h=1.55, d=0.16;
+
+  // dark glass body
+  const body = new THREE.Mesh(
+    new THREE.BoxGeometry(w,h,d),
+    new THREE.MeshBasicMaterial({color:0x0a0f1c, transparent:true, opacity:0.42, depthWrite:false})
+  );
+  g.add(body);
+
+  // glowing wireframe edge
+  const edges = new THREE.LineSegments(
+    new THREE.EdgesGeometry(new THREE.BoxGeometry(w,h,d)),
+    new THREE.LineBasicMaterial({color, transparent:true})
+  );
+  g.add(edges);
+
+  // etched markdown face (both sides so it reads from behind too)
+  const tex = faceTexture(lines, '#'+new THREE.Color(color).getHexString());
+  const faceMat = new THREE.MeshBasicMaterial({map:tex, transparent:true, depthWrite:false, side:THREE.DoubleSide});
+  const face = new THREE.Mesh(new THREE.PlaneGeometry(w*0.92, h*0.92), faceMat);
+  face.position.z = d/2 + 0.002;
+  g.add(face);
+
+  // halo behind
+  const h1 = halo(color, 4.6, 0.5);
+  h1.position.z = -d;
+  g.add(h1);
+
+  scene.add(g);
+
+  return {
+    group:g, edges, body, face, halo:h1,
+    set(r){               // r in 0..1
+      const e = smooth(0,1,r);
+      g.visible = r>0.001;
+      g.scale.setScalar(lerp(0.86,1,e));
+      edges.material.opacity = e;
+      body.material.opacity = 0.42*e;
+      faceMat.opacity = e;
+      h1.material.opacity = 0.5*e;
+    }
+  };
+}
+
+// emissive rail / ribbon along a curve (MeshBasic = pure glow)
+function rail(curve, color, radius=0.018, seg=120){
+  const geo = new THREE.TubeGeometry(curve, seg, radius, 8, false);
+  const mat = new THREE.MeshBasicMaterial({color, transparent:true, opacity:0});
+  const m = new THREE.Mesh(geo, mat);
+  scene.add(m);
+  return m;
+}
+
+// ------------------------------------------------------------------
+// LAYOUT  (z runs negative into the distance; camera dollies forward)
+// ------------------------------------------------------------------
+const SLAB_Y = 0.35;
+const UP_Y   = 5.1;          // GitHub platform altitude
+const BRANCH_X = 2.5;
+
+// stage z-positions
+const zA = -2,  zB = -6.2,  zSplit = -9,
+      zMain = -13.2, zFeat = -12.4,
+      zMerge = -16.2, zResolved = -17.4, zEnd = -19;
+
+// snapshots (lower / local)
+const sA = snapshot(new THREE.Vector3(0, SLAB_Y, zA), COL.main, [
+  {t:'# My Learning Log', dim:false},
+  {t:'## About', dim:true},
+  {t:'- learning git', dim:true}
+]);
+const sB = snapshot(new THREE.Vector3(0, SLAB_Y, zB), COL.main, [
+  {t:'## Goals', dim:false},
+  {t:'## What I Learned', dim:false},
+  {t:'- git tracks change', dim:true}
+]);
+const sFeat = snapshot(new THREE.Vector3(BRANCH_X, SLAB_Y+0.55, zFeat), COL.branch, [
+  {t:'- tracks change', dim:true},
+  {t:'- branches let you', dim:false},
+  {t:'- merge when ready', dim:false}
+]);
+const sMain = snapshot(new THREE.Vector3(0, SLAB_Y, zMain), COL.main, [
+  {t:'- a time machine', dim:false},
+  {t:'- every commit is', dim:false},
+  {t:'  a snapshot', dim:true}
+]);
+const sRes = snapshot(new THREE.Vector3(0, SLAB_Y, zResolved), COL.resolved, [
+  {t:'- a time machine', dim:false},
+  {t:'- a snapshot', dim:false},
+  {t:'- branches + merge', dim:false}
+]);
+
+// upper mirrors (GitHub) — built dim, revealed on push
+const upMirrors = [
+  snapshot(new THREE.Vector3(0, UP_Y, zA), COL.resolved, [{t:'# My Learning Log',dim:false},{t:'## public',dim:true}]),
+  snapshot(new THREE.Vector3(0, UP_Y, zB), COL.resolved, [{t:'## Goals',dim:false},{t:'5 commits',dim:true}]),
+  snapshot(new THREE.Vector3(0, UP_Y, zResolved), COL.resolved, [{t:'merged',dim:false},{t:'main',dim:true}])
+];
+
+// ---- rails ----
+const railMain = rail(new THREE.CatmullRomCurve3([
+  new THREE.Vector3(0,SLAB_Y,zA+1),
+  new THREE.Vector3(0,SLAB_Y,zB),
+  new THREE.Vector3(0,SLAB_Y,zSplit),
+  new THREE.Vector3(0,SLAB_Y,zMain),
+  new THREE.Vector3(0,SLAB_Y,zMerge),
+]), COL.main, 0.02);
+
+const featCurve = new THREE.CatmullRomCurve3([
+  new THREE.Vector3(0,SLAB_Y,zSplit),
+  new THREE.Vector3(BRANCH_X*0.6,SLAB_Y+0.35,zSplit-1.6),
+  new THREE.Vector3(BRANCH_X,SLAB_Y+0.55,zFeat),
+  new THREE.Vector3(BRANCH_X*0.55,SLAB_Y+0.32,zMerge+1.4),
+  new THREE.Vector3(0,SLAB_Y,zMerge),
+]);
+const railFeat = rail(featCurve, COL.branch, 0.02);
+
+const railMerged = rail(new THREE.CatmullRomCurve3([
+  new THREE.Vector3(0,SLAB_Y,zMerge),
+  new THREE.Vector3(0,SLAB_Y,zResolved),
+  new THREE.Vector3(0,SLAB_Y,zEnd),
+]), COL.resolved, 0.024);
+
+// ---- branch label ----
+const featLabel = label('add-resources', '#ffb454');
+featLabel.position.set(BRANCH_X, SLAB_Y+1.45, zFeat);
+featLabel.material.opacity = 0;
+scene.add(featLabel);
+
+const mainLabel = label('main', '#7fe7ff', 0.85);
+mainLabel.position.set(-1.3, SLAB_Y+0.1, zSplit-0.4);
+mainLabel.material.opacity = 0;
+scene.add(mainLabel);
+
+// ---- conflict fracture cluster ----
+const conflictGroup = new THREE.Group();
+conflictGroup.position.set(0, SLAB_Y+0.05, zMerge+0.2);
+const cHalo = halo(COL.conflict, 5.5, 0.6);
+conflictGroup.add(cHalo);
+const m1 = label('<<<<<<<', '#ff4d5e', 0.8); m1.position.y =  0.55; conflictGroup.add(m1);
+const m2 = label('=======', '#ff8a93', 0.8); m2.position.y =  0.0;  conflictGroup.add(m2);
+const m3 = label('>>>>>>>', '#ff4d5e', 0.8); m3.position.y = -0.55; conflictGroup.add(m3);
+// jagged fault shards
+const shards=[];
+for(let i=0;i<7;i++){
+  const sh = new THREE.Mesh(
+    new THREE.BoxGeometry(0.04, 0.5+Math.random()*0.6, 0.04),
+    new THREE.MeshBasicMaterial({color:COL.conflict, transparent:true, opacity:0})
+  );
+  sh.position.set((Math.random()-0.5)*2.4, (Math.random()-0.5)*1.4, (Math.random()-0.5)*0.6);
+  sh.rotation.z = (Math.random()-0.5)*1.2;
+  conflictGroup.add(sh); shards.push(sh);
+}
+scene.add(conflictGroup);
+
+// ---- ground + sky platforms ----
+function platform(y, color, op){
+  const g = new THREE.GridHelper(60, 60, color, color);
+  g.position.set(0, y, -9);
+  g.material.transparent = true;
+  g.material.opacity = op;
+  scene.add(g);
+  return g;
+}
+const ground = platform(-0.7, COL.grid, 0.5);
+const sky    = platform(UP_Y-0.05, COL.gridUp, 0.0);   // revealed on push
+
+// ---- push ribbons (lower → upper) ----
+const ribbons = [];
+[[0,zA],[0,zB],[0,zResolved]].forEach(([x,z])=>{
+  const cv = new THREE.CatmullRomCurve3([
+    new THREE.Vector3(x, SLAB_Y+0.4, z),
+    new THREE.Vector3(x+ (Math.random()-0.5)*1.5, (SLAB_Y+UP_Y)/2, z+0.3),
+    new THREE.Vector3(x, UP_Y-0.4, z),
+  ]);
+  ribbons.push(rail(cv, COL.resolved, 0.012, 40));
+});
+
+// ---- atmosphere: drifting dust ----
+const dustGeo = new THREE.BufferGeometry();
+const N=320, parr=new Float32Array(N*3);
+for(let i=0;i<N;i++){
+  parr[i*3]   = (Math.random()-0.5)*22;
+  parr[i*3+1] = (Math.random()-0.2)*9;
+  parr[i*3+2] = -Math.random()*24;
+}
+dustGeo.setAttribute('position', new THREE.BufferAttribute(parr,3));
+const dust = new THREE.Points(dustGeo, new THREE.PointsMaterial({
+  color:0x9fb4d8, size:0.02, transparent:true, opacity:0.5, depthWrite:false
+}));
+scene.add(dust);
+
+// ------------------------------------------------------------------
+// CAMERA PATH — forward dolly, rising at the end to reveal GitHub
+// ------------------------------------------------------------------
+const camPath = new THREE.CatmullRomCurve3([
+  new THREE.Vector3(0, 1.25, 3.2),
+  new THREE.Vector3(0, 1.30, zA),
+  new THREE.Vector3(0.25, 1.35, zB),
+  new THREE.Vector3(0.9, 1.5, zSplit),
+  new THREE.Vector3(1.35, 1.62, zFeat),
+  new THREE.Vector3(0.4, 1.62, zMerge+1.5),
+  new THREE.Vector3(0, 1.85, zMerge),
+  new THREE.Vector3(0, 2.7, zResolved),
+  new THREE.Vector3(0, 4.4, zEnd),
+]);
+
+// ------------------------------------------------------------------
+// CAPTION SCRIPT — maps 1:1 to the NextWork project steps
+// ------------------------------------------------------------------
+const beats = [
+  {t:0.00, cmd:'git init · git commit', desc:'Your file becomes the first snapshot. A repo is just a folder Git is watching.', col:'var(--main)'},
+  {t:0.16, cmd:'git commit', desc:'History grows. Each commit freezes the exact state of the file in time.', col:'var(--main)'},
+  {t:0.32, cmd:'git checkout -b add-resources', desc:'A branch peels off to experiment on. main stays untouched in the dark.', col:'var(--branch)'},
+  {t:0.48, cmd:'git commit  (on main)', desc:'Now both branches have edited the very same lines, in different ways.', col:'var(--main)'},
+  {t:0.62, cmd:'git merge add-resources', desc:'The lines collide. Conflict markers wedge in. Git asks you to decide.', col:'var(--conflict)'},
+  {t:0.74, cmd:'resolve · commit', desc:'You keep the best of both. The two streams braid into one clean snapshot.', col:'var(--resolved)'},
+  {t:0.85, cmd:'git push -u origin main', desc:'Your whole local history rises to GitHub — public for anyone to see.', col:'var(--resolved)'},
+];
+let lastBeat = -1;
+const capEl=document.getElementById('cap'), cmdEl=document.getElementById('capCmd'),
+      descEl=document.getElementById('capDesc');
+function updateCaption(t){
+  let idx=0;
+  for(let i=0;i<beats.length;i++){ if(t>=beats[i].t) idx=i; }
+  if(idx!==lastBeat){
+    lastBeat=idx;
+    cmdEl.textContent=beats[idx].cmd;
+    descEl.textContent=beats[idx].desc;
+    cmdEl.style.color=beats[idx].col;
+    capEl.classList.remove('fade'); void capEl.offsetWidth; capEl.classList.add('fade');
+  }
+}
+
+// ------------------------------------------------------------------
+// DRIVE THE WHOLE SCENE FROM ONE SCALAR  t ∈ [0,1]
+// ------------------------------------------------------------------
+function apply(t){
+  // --- camera ---
+  const ct = clamp(t,0,1);
+  const pos = camPath.getPointAt(ct);
+  camera.position.copy(pos);
+
+  let look = camPath.getPointAt(clamp(ct+0.04,0,1)).clone();
+  // tilt up at the end so the GitHub platform rises into frame
+  const up = smooth(0.84,1.0,ct);
+  look.y = lerp(look.y, UP_Y+0.3, up);
+  look.z = lerp(look.z, zResolved, up*0.5);
+  camera.lookAt(look);
+
+  // --- snapshot reveals (appear just before the camera reaches them) ---
+  sA.set( smooth(zToT(zA)-0.10,  zToT(zA),  t) );
+  sB.set( smooth(zToT(zB)-0.10,  zToT(zB),  t) );
+  sFeat.set( smooth(0.30,0.40, t) );
+  sMain.set( smooth(0.45,0.55, t) );
+  // resolved slab fades in as the conflict clears
+  sRes.set( smooth(0.70,0.80, t) );
+
+  // --- rails grow in along the journey ---
+  railMain.material.opacity   = smooth(0.05,0.45, t)*0.95;
+  railFeat.material.opacity   = smooth(0.30,0.42, t)*0.95;
+  railMerged.material.opacity = smooth(0.72,0.82, t)*0.95;
+
+  // --- labels ---
+  featLabel.material.opacity = smooth(0.30,0.40,t) * (1-smooth(0.66,0.78,t)*0.6);
+  mainLabel.material.opacity = smooth(0.33,0.43,t) * (1-smooth(0.66,0.78,t));
+
+  // --- conflict: bump up mid-merge, then dissolve ---
+  const cf = bump(0.56,0.74, t);
+  m1.material.opacity = cf; m2.material.opacity = cf; m3.material.opacity = cf;
+  cHalo.material.opacity = cf*0.7;
+  for(const sh of shards){ sh.material.opacity = cf*0.9; }
+  conflictGroup.position.y = SLAB_Y + 0.05 + Math.sin(performance.now()*0.004)*0.02*cf;
+
+  // --- push: sky platform, mirrors, ribbons ---
+  const push = smooth(0.84,1.0, t);
+  sky.material.opacity = push*0.6;
+  upMirrors.forEach((m,i)=> m.set(smooth(0.86+i*0.02, 0.96+i*0.02, t)) );
+  ribbons.forEach((r,i)=>{ r.material.opacity = bump(0.85,1.0,t)*0.9; });
+}
+
+// convert a world-z stage to its approximate t along the path (for reveal timing)
+function zToT(z){
+  // rough monotonic map from z (3.2 → zEnd) to 0..1, tuned to camPath spacing
+  const z0=3.2, z1=zEnd;
+  return clamp((z0 - z)/(z0 - z1), 0, 1);
+}
+
+// ------------------------------------------------------------------
+// TRANSPORT + PLAYBACK
+// ------------------------------------------------------------------
+let t = 0, playing = true, dragging = false;
+const scrub=document.getElementById('scrub'), pct=document.getElementById('pct'),
+      playBtn=document.getElementById('play'), pIcon=document.getElementById('pIcon');
+
+const ICON_PLAY  = 'M8 5v14l11-7z';
+const ICON_PAUSE = 'M6 5h4v14H6zM14 5h4v14h-4z';
+
+function setPlaying(p){
+  playing=p;
+  pIcon.setAttribute('d', p?ICON_PAUSE:ICON_PLAY);
+}
+playBtn.addEventListener('click', ()=>{
+  if(t>=0.999){ t=0; }      // replay from start
+  setPlaying(!playing);
+});
+scrub.addEventListener('input', ()=>{
+  t = scrub.value/1000;
+  setPlaying(false);
+});
+scrub.addEventListener('pointerdown', ()=> dragging=true);
+window.addEventListener('pointerup', ()=> dragging=false);
+
+// place tick marks at each beat
+const ticksEl=document.getElementById('ticks');
+beats.forEach(b=>{
+  const s=document.createElement('span');
+  s.style.left=(b.t*100)+'%';
+  ticksEl.appendChild(s);
+});
+
+// ------------------------------------------------------------------
+// LOOP
+// ------------------------------------------------------------------
+let last = performance.now();
+function tick(now){
+  const dt = Math.min((now-last)/1000, 0.05); last=now;
+
+  if(playing && !dragging){
+    t += dt * 0.052;            // ~19s full pass
+    if(t>=1){ t=1; setPlaying(false); }
+    scrub.value = (t*1000)|0;
+  }
+
+  pct.textContent = String(Math.round(t*100)).padStart(2,'0')+'%';
+  updateCaption(t);
+  apply(t);
+
+  // drifting dust
+  const pa = dustGeo.attributes.position.array;
+  for(let i=0;i<N;i++){ pa[i*3+1] += dt*0.06; if(pa[i*3+1]>9) pa[i*3+1]=-2; }
+  dustGeo.attributes.position.needsUpdate = true;
+
+  renderer.render(scene,camera);
+  requestAnimationFrame(tick);
+}
+
+resize();
+setPlaying(true);
+requestAnimationFrame(tick);
+</script>
+</body>
+</html>

@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Git Topological Graph</title>
+    <link rel="stylesheet" href="style-4.css">
+    <link rel="stylesheet" href="graph.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=Fira+Code:wght@500&display=swap" rel="stylesheet">
+</head>
+<body>
+    
+
+    <!-- The Graph Container -->
+    <div class="graph-container" id="graph-container">
+        
+        <!-- Background SVG for drawing bezier paths -->
+        <svg id="svg-overlay"></svg>
+        
+        <!-- Cloud Zone -->
+        <div id="cloud-zone">
+            <div class="cloud-title">☁️ The Cloud</div>
+            <!-- Remote Nodes injected here -->
+            <div id="remote-node-container"></div>
+        </div>
+
+        <!-- Y-Axis Labels -->
+        <div class="branch-label-bg" id="label-main" style="top: 100px;">Main Timeline</div>
+        <div class="branch-label-bg" id="label-feature" style="top: 250px; opacity: 0.2; transition: opacity 0.5s;">Feature Timeline (Inactive)</div>
+        
+        <!-- Local Nodes injected here -->
+        <div id="node-container"></div>
+        
+        <!-- Dynamic Current State Tag -->
+        <div id="head-tag">HEAD</div>
+    </div>
+    
+    <!-- Rosetta Stone Controls -->
+    <div class="controls-rosetta">
+        <button id="btn-add" class="btn dual-btn">
+            <span class="cmd">git add .</span>
+            <span class="sub">Stage changes for commit</span>
+        </button>
+        <button id="btn-commit" class="btn dual-btn" disabled>
+            <span class="cmd">git commit</span>
+            <span class="sub">Save a snapshot of files</span>
+        </button>
+        <button id="btn-branch" class="btn dual-btn" disabled>
+            <span class="cmd">git branch feature</span>
+            <span class="sub">Create a parallel timeline</span>
+        </button>
+        <button id="btn-checkout" class="btn dual-btn" disabled>
+            <span class="cmd">git checkout feature</span>
+            <span class="sub">Switch to the feature timeline</span>
+        </button>
+        <button id="btn-merge" class="btn dual-btn" disabled>
+            <span class="cmd">git merge feature</span>
+            <span class="sub">Combine feature work into main</span>
+        </button>
+        <div class="cloud-controls">
+            <button id="btn-push" class="btn dual-btn">
+                <span class="cmd">git push</span>
+                <span class="sub">Upload to cloud</span>
+            </button>
+            <button id="btn-pull" class="btn dual-btn">
+                <span class="cmd">git pull</span>
+                <span class="sub">Download from cloud</span>
+            </button>
+        </div>
+    </div>
+    
+    <script src="graph.js"></script>
+    <script src="graph-animation.js"></script>
+</body>
+</html>

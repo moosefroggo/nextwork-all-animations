@@ -1,0 +1,567 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Git Branching — Nextwork</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0e1016; --bg2:#11141d;
+  --panel:#161a25; --panel2:#1b2030;
+  --line:rgba(255,255,255,.08); --line2:rgba(255,255,255,.16);
+  --txt:#e7eaf2; --muted:#8a93a8; --faint:#5b6477;
+  --main:#a78bfa; --feat:#34d399; --merge:#fbbf24; --r:14px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{
+  background:
+    radial-gradient(900px 500px at 20% -10%, rgba(167,139,250,.09), transparent 55%),
+    radial-gradient(700px 400px at 85% -8%,  rgba(52,211,153,.08), transparent 55%),
+    var(--bg);
+  color:var(--txt); font-family:'Inter',system-ui,sans-serif;
+  min-height:100vh; display:flex; flex-direction:column; align-items:center;
+  padding:72px 20px 48px; gap:20px;
+}
+
+/* nav */
+.page-switch{
+  position:fixed; top:14px; left:50%; transform:translateX(-50%);
+  z-index:100; display:flex; gap:4px;
+  background:rgba(22,26,37,.85); backdrop-filter:blur(10px);
+  border:1px solid var(--line2); border-radius:999px; padding:4px;
+}
+.page-switch a{
+  text-decoration:none; color:var(--muted); font-size:.8rem; font-weight:500;
+  padding:6px 15px; border-radius:999px; transition:all .15s;
+}
+.page-switch a:hover{background:rgba(255,255,255,.06); color:var(--txt)}
+.page-switch a.active{background:rgba(167,139,250,.16); color:var(--main)}
+
+/* title */
+.title{text-align:center}
+.title h1{font-size:1.28rem;font-weight:700;letter-spacing:-.01em}
+.title p{font-size:.86rem;color:var(--muted);margin-top:4px}
+
+/* ── STAGE ── */
+.stage{
+  width:100%; max-width:1100px; min-height:260px;
+  background:rgba(255,255,255,.012); border:1px solid var(--line);
+  border-radius:var(--r);
+  display:flex; align-items:stretch; gap:0; overflow:hidden;
+}
+
+/* ── FILE EXPLORER ── */
+.explorer{
+  flex:0 0 190px; border-right:1px solid var(--line);
+  background:rgba(0,0,0,.18); padding:0;
+  display:flex; flex-direction:column;
+}
+.exp-header{
+  padding:9px 14px; border-bottom:1px solid var(--line);
+  font-size:.62rem; font-weight:700; letter-spacing:.08em;
+  text-transform:uppercase; color:var(--faint);
+}
+.exp-body{ padding:10px 0; flex:1; }
+
+.exp-folder{
+  display:flex; align-items:center; gap:6px;
+  padding:4px 14px; font-family:'JetBrains Mono',monospace;
+  font-size:.68rem; font-weight:600; color:var(--txt);
+  cursor:default;
+}
+.exp-folder svg{ width:13px;height:13px;flex-shrink:0;color:#fbbf24 }
+
+.exp-file{
+  display:flex; align-items:center; gap:6px;
+  padding:4px 14px 4px 28px; font-family:'JetBrains Mono',monospace;
+  font-size:.67rem; color:var(--muted);
+  opacity:0; transform:translateX(-6px);
+  transition:opacity .4s ease, transform .4s ease;
+}
+.exp-file.show{ opacity:1; transform:none; }
+.exp-file svg{ width:11px;height:11px;flex-shrink:0; }
+.exp-file.git-folder{ color:var(--faint); font-style:italic; }
+.exp-file.git-folder svg{ color:var(--faint); }
+.exp-file.new-file{ color:var(--feat); }
+.exp-file.new-file svg{ color:var(--feat); }
+.exp-file.tracked{ color:var(--txt); }
+.exp-file.tracked svg{ color:#7dd3fc; }
+
+/* ── GRAPH PANEL ── */
+.graph-panel{
+  flex:1; padding:28px 20px 20px; display:flex; flex-direction:column; gap:0;
+}
+
+#graph-svg{
+  width:100%; overflow:visible;
+  height:210px;
+}
+
+/* ── ANNOTATION BUBBLES ── */
+.annotation{
+  position:absolute; pointer-events:none;
+  background:var(--panel2); border:1px solid var(--line2);
+  border-radius:8px; padding:6px 10px;
+  font-size:.65rem; color:var(--muted); line-height:1.45;
+  max-width:140px; text-align:center;
+  opacity:0; transform:translateY(4px) scale(.95);
+  transition:opacity .4s ease, transform .4s ease;
+}
+.annotation.show{ opacity:1; transform:none; }
+.annotation b{ font-weight:600; }
+.annotation.main-ann b{ color:var(--main); }
+.annotation.feat-ann b{ color:var(--feat); }
+.annotation.head-ann b{ color:#fde68a; }
+
+
+/* terminal */
+.terminal{
+  width:100%; max-width:620px; background:#0a0c12;
+  border:1px solid var(--line2); border-radius:12px; overflow:hidden;
+}
+.term-bar{
+  display:flex;align-items:center;gap:6px;
+  padding:8px 12px;background:rgba(255,255,255,.03);border-bottom:1px solid var(--line);
+}
+.term-bar i{width:10px;height:10px;border-radius:50%;display:inline-block}
+.term-bar i:nth-child(1){background:#ff5f56}
+.term-bar i:nth-child(2){background:#ffbd2e}
+.term-bar i:nth-child(3){background:#27c93f}
+.term-bar .term-path{
+  margin-left:8px;font-size:.62rem;color:var(--faint);font-family:'JetBrains Mono',monospace;
+  transition:color .3s;
+}
+.term-bar .term-path .branch-indicator{
+  color:var(--main); transition:color .3s;
+}
+.term-body{
+  padding:12px 14px;min-height:40px;
+  font-family:'JetBrains Mono',monospace;font-size:.82rem;
+  display:flex;align-items:center;
+}
+.term-body .prompt{color:var(--feat);margin-right:8px;flex-shrink:0}
+.term-body .cmd{color:var(--txt)}
+.term-body .cursor{
+  display:inline-block;width:8px;height:1.05em;
+  vertical-align:-2px;background:var(--txt);margin-left:2px;
+  animation:blink 1s step-end infinite;
+}
+@keyframes blink{50%{opacity:0}}
+
+/* readout */
+.readout{width:100%;max-width:1100px;display:flex;flex-direction:column;gap:10px;align-items:center}
+
+.caption{
+  text-align:center;font-size:1rem;font-weight:500;color:var(--txt);
+  min-height:1.5em;max-width:720px; line-height:1.55;
+}
+.caption b{font-weight:700}
+.caption b.p{color:var(--main)}
+.caption b.g{color:var(--feat)}
+.caption b.y{color:var(--merge)}
+.caption b.w{color:#fff}
+.caption code{
+  font-family:'JetBrains Mono',monospace; font-size:.82em;
+  background:rgba(255,255,255,.07); padding:1px 6px; border-radius:4px;
+  color:var(--txt);
+}
+
+.replay{
+  display:flex;align-items:center;gap:8px;padding:10px 20px;border-radius:999px;
+  background:rgba(255,255,255,.04);border:1px solid var(--line2);color:var(--txt);
+  font:inherit;font-size:.85rem;font-weight:500;cursor:pointer;transition:all .15s;
+  opacity:0;pointer-events:none;
+}
+.replay.show{opacity:1;pointer-events:auto}
+.replay:hover{border-color:var(--main);background:rgba(167,139,250,.1)}
+.replay svg{width:15px;height:15px}
+</style>
+</head>
+<body>
+
+
+
+<div class="title">
+  <h1>The magic of branching</h1>
+  <p>from an empty folder &rarr; to a full git history</p>
+</div>
+
+<div class="stage" id="stage">
+
+  <!-- ── FILE EXPLORER ── -->
+  <div class="explorer" id="explorer">
+    <div class="exp-header">Explorer</div>
+    <div class="exp-body">
+      <div class="exp-folder" id="ef-root" style="opacity:0;transition:opacity .4s">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M20 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2zm-9-2H4a2 2 0 0 0-2 2h9V5z"/></svg>
+        my-project
+      </div>
+      <div id="exp-files"></div>
+    </div>
+  </div>
+
+  <!-- ── GIT GRAPH ── -->
+  <div class="graph-panel" id="graph-panel">
+    <svg id="graph-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 780 210" preserveAspectRatio="xMidYMid meet">
+      <defs>
+        <filter id="gf-main" x="-100%" y="-100%" width="300%" height="300%">
+          <feGaussianBlur stdDeviation="5" result="b"/>
+          <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+        </filter>
+        <filter id="gf-feat" x="-100%" y="-100%" width="300%" height="300%">
+          <feGaussianBlur stdDeviation="5" result="b"/>
+          <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+        </filter>
+        <filter id="gf-merge" x="-100%" y="-100%" width="300%" height="300%">
+          <feGaussianBlur stdDeviation="7" result="b"/>
+          <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+        </filter>
+      </defs>
+
+      <!-- ── LINES (paths set by JS) ── -->
+      <path id="l-main-pre"    fill="none" stroke="rgba(167,139,250,.45)" stroke-width="2.5" stroke-linecap="round"/>
+      <path id="l-main-mid"    fill="none" stroke="rgba(167,139,250,.45)" stroke-width="2.5" stroke-linecap="round"/>
+      <path id="l-main-post"   fill="none" stroke="rgba(167,139,250,.45)" stroke-width="2.5" stroke-linecap="round"/>
+      <path id="l-branch-off"  fill="none" stroke="rgba(52,211,153,.45)"  stroke-width="2.5" stroke-linecap="round"/>
+      <path id="l-feat"        fill="none" stroke="rgba(52,211,153,.45)"  stroke-width="2.5" stroke-linecap="round"/>
+      <path id="l-merge-in"    fill="none" stroke="rgba(52,211,153,.45)"  stroke-width="2.5" stroke-linecap="round"/>
+      <path id="l-merge-ext"   fill="none" stroke="rgba(251,191,36,.5)"   stroke-width="2.5" stroke-linecap="round"/>
+
+      <!-- ── COMMITS ── -->
+      <!-- main -->
+      <circle id="c0"     class="cnode-circle" cx="70"  cy="80" r="0" fill="#a78bfa" stroke="rgba(167,139,250,.7)" stroke-width="2" filter="url(#gf-main)"/>
+      <circle id="c1"     class="cnode-circle" cx="210" cy="80" r="0" fill="#a78bfa" stroke="rgba(167,139,250,.7)" stroke-width="2" filter="url(#gf-main)"/>
+      <circle id="c-m2"   class="cnode-circle" cx="490" cy="80" r="0" fill="#a78bfa" stroke="rgba(167,139,250,.7)" stroke-width="2" filter="url(#gf-main)"/>
+      <circle id="c-merge" class="cnode-circle" cx="640" cy="80" r="0" fill="#fbbf24" stroke="rgba(251,191,36,.75)" stroke-width="2.5" filter="url(#gf-merge)"/>
+      <!-- feature -->
+      <circle id="c-f1"   class="cnode-circle" cx="360" cy="155" r="0" fill="#34d399" stroke="rgba(52,211,153,.7)"  stroke-width="2" filter="url(#gf-feat)"/>
+      <circle id="c-f2"   class="cnode-circle" cx="490" cy="155" r="0" fill="#34d399" stroke="rgba(52,211,153,.7)"  stroke-width="2" filter="url(#gf-feat)"/>
+
+      <!-- ── COMMIT LABELS ── -->
+      <text id="lbl-c0"     x="70"  y="96"  text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="9" fill="#5b6477" opacity="0">first commit</text>
+      <text id="lbl-c1"     x="210" y="96"  text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="9" fill="#5b6477" opacity="0">add styles</text>
+      <text id="lbl-cm2"    x="490" y="96"  text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="9" fill="#5b6477" opacity="0">fix typo</text>
+      <text id="lbl-cf1"    x="360" y="171" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="9" fill="#5b6477" opacity="0">add login page</text>
+      <text id="lbl-cf2"    x="490" y="171" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="9" fill="#5b6477" opacity="0">add tests</text>
+      <text id="lbl-merge"  x="640" y="96"  text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="9" fill="#5b6477" opacity="0">merge feat/login</text>
+
+      <!-- ── BRANCH NAME PILLS ── -->
+      <g id="pill-main" opacity="0" style="transition:opacity .4s">
+        <rect x="10" y="62" width="50" height="17" rx="8.5" fill="rgba(167,139,250,.15)" stroke="rgba(167,139,250,.4)" stroke-width="1"/>
+        <text x="35" y="74.5" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="9" font-weight="700" fill="#a78bfa">main</text>
+      </g>
+      <g id="pill-feat" opacity="0" style="transition:opacity .4s">
+        <rect x="280" y="155" width="68" height="17" rx="8.5" fill="rgba(52,211,153,.12)" stroke="rgba(52,211,153,.4)" stroke-width="1"/>
+        <text x="314" y="167.5" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="9" font-weight="700" fill="#34d399">feat/login</text>
+      </g>
+
+      <!-- ── HEAD INDICATOR ── -->
+      <g id="head-group" opacity="0" style="transition:opacity .35s">
+        <line id="head-line" x1="70" y1="60" x2="70" y2="68" stroke="rgba(253,230,138,.8)" stroke-width="1.5"/>
+        <text id="head-text" x="70" y="56" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="10" font-weight="700" fill="#fde68a">HEAD</text>
+      </g>
+    </svg>
+  </div>
+</div>
+
+<!-- ── TERMINAL + CAPTION ── -->
+<div class="readout">
+  <div class="terminal">
+    <div class="term-bar">
+      <i></i><i></i><i></i>
+      <span class="term-path" id="term-path">~</span>
+    </div>
+    <div class="term-body">
+      <span class="prompt">$</span>
+      <span class="cmd" id="cmd"></span>
+      <span class="cursor" id="cursor"></span>
+    </div>
+  </div>
+  <div class="caption" id="caption"></div>
+  <button class="replay" id="replay">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>
+    Replay
+  </button>
+</div>
+
+<script>
+const SPEED = 1;
+const ms    = n => n / SPEED;
+const sleep = n => new Promise(r => setTimeout(r, ms(n)));
+const $     = id => document.getElementById(id);
+
+// ── SVG icon snippets for file explorer ──────────────────────────────────────
+const ICON_GIT  = `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M15 3a3 3 0 0 1 3 3 3 3 0 0 1-3 3 3 3 0 0 1-2.83-2H11v4h1.17A3 3 0 0 1 15 12a3 3 0 0 1-3 3 3 3 0 0 1-2.83-2H8a3 3 0 0 1-3-3V6a3 3 0 0 1 3-3 3 3 0 0 1 2.83 2h1.34A3 3 0 0 1 15 3m0 2a1 1 0 0 0-1 1 1 1 0 0 0 1 1 1 1 0 0 0 1-1 1 1 0 0 0-1-1M8 8a1 1 0 0 0-1 1v2a1 1 0 0 0 1 1h1V8H8m4 0v4h1.17A3 3 0 0 1 15 10a3 3 0 0 1 1 .17V8.83A3 3 0 0 1 15 9a3 3 0 0 1-1-.17V8h-2m3 3a1 1 0 0 0-1 1 1 1 0 0 0 1 1 1 1 0 0 0 1-1 1 1 0 0 0-1-1z"/></svg>`;
+const ICON_JS   = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>`;
+const ICON_CSS  = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>`;
+const ICON_FOLD = `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M10 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/></svg>`;
+
+// ── Explorer helpers ──────────────────────────────────────────────────────────
+function addExpFile(id, icon, name, cls){
+  const el = document.createElement('div');
+  el.id = id;
+  el.className = 'exp-file ' + cls;
+  el.innerHTML = icon + ' ' + name;
+  $('exp-files').appendChild(el);
+  void el.offsetWidth;
+  el.classList.add('show');
+}
+
+// ── Terminal helpers ──────────────────────────────────────────────────────────
+function setPath(p, branch=''){
+  const pathEl = $('term-path');
+  pathEl.textContent = p + (branch ? ' ' : '');
+  if(branch){
+    const span = document.createElement('span');
+    span.className = 'branch-indicator';
+    span.textContent = '(' + branch + ')';
+    pathEl.appendChild(span);
+  }
+}
+
+let typeToken = 0;
+async function type(text){
+  const tok = ++typeToken;
+  $('cmd').textContent = '';
+  for(const ch of text){
+    if(tok !== typeToken) return;
+    $('cmd').textContent += ch;
+    await sleep(36);
+  }
+}
+function clearTerm(){ typeToken++; $('cmd').textContent = ''; }
+
+function say(html){
+  $('caption').innerHTML = html;
+}
+
+// ── SVG graph helpers ─────────────────────────────────────────────────────────
+function drawPath(id, d, dur=600){
+  const el = $(id);
+  el.setAttribute('d', d);
+  const len = el.getTotalLength ? el.getTotalLength() : 500;
+  el.style.strokeDasharray  = len;
+  el.style.strokeDashoffset = len;
+  el.style.transition = 'none';
+  void el.offsetWidth;
+  el.style.transition = `stroke-dashoffset ${ms(dur)}ms ease`;
+  el.style.strokeDashoffset = '0';
+  return sleep(dur);
+}
+
+// SVG r attribute can't be animated via CSS keyframes — use rAF
+function popNode(id){
+  return new Promise(resolve => {
+    const el = $(id);
+    const dur = ms(400);
+    const t0  = performance.now();
+    function tick(now){
+      const raw = Math.max(0, Math.min((now - t0) / dur, 1));
+      // ease out with slight overshoot: grow to 13 by t=0.55, settle to 9
+      const r = raw < 0.55
+        ? (raw / 0.55) * 13
+        : 13 - ((raw - 0.55) / 0.45) * 4;
+      el.setAttribute('r', r);
+      if(raw < 1) requestAnimationFrame(tick);
+      else { el.setAttribute('r', '9'); resolve(); }
+    }
+    requestAnimationFrame(tick);
+  });
+}
+
+function showLabel(id){
+  const el = $(id);
+  el.style.transition = 'opacity .4s';
+  el.style.opacity = '1';
+}
+
+function showEl(id, on=true){
+  $(id).style.opacity = on ? '1' : '0';
+}
+
+// SVG presentation attributes can't be CSS-transitioned — use rAF
+function moveHead(cx, cy, animate=true){
+  const hl = $('head-line');
+  const ht = $('head-text');
+  if(!animate){
+    hl.setAttribute('x1', cx); hl.setAttribute('x2', cx);
+    hl.setAttribute('y1', cy - 14); hl.setAttribute('y2', cy - 5);
+    ht.setAttribute('x', cx); ht.setAttribute('y', cy - 18);
+    return Promise.resolve();
+  }
+  return new Promise(resolve => {
+    const x0 = parseFloat(hl.getAttribute('x1') || cx);
+    const dur = ms(350);
+    const t0  = performance.now();
+    function tick(now){
+      const raw = Math.min((now - t0) / dur, 1);
+      const t   = raw < 0.5 ? 2*raw*raw : -1+(4-2*raw)*raw; // ease in-out
+      const x   = x0 + (cx - x0) * t;
+      hl.setAttribute('x1', x); hl.setAttribute('x2', x);
+      hl.setAttribute('y1', cy - 14); hl.setAttribute('y2', cy - 5);
+      ht.setAttribute('x', x); ht.setAttribute('y', cy - 18);
+      if(raw < 1) requestAnimationFrame(tick);
+      else resolve();
+    }
+    requestAnimationFrame(tick);
+  });
+}
+
+// ── MAIN SEQUENCE ─────────────────────────────────────────────────────────────
+async function run(){
+  // reset
+  ['l-main-pre','l-main-mid','l-main-post','l-branch-off','l-feat','l-merge-in','l-merge-ext']
+    .forEach(id => { const e=$(id); e.setAttribute('d',''); e.style.strokeDashoffset='1000'; });
+  ['c0','c1','c-m2','c-merge','c-f1','c-f2']
+    .forEach(id => { const e=$(id); e.classList.remove('pop'); e.setAttribute('r','0'); });
+  ['lbl-c0','lbl-c1','lbl-cm2','lbl-cf1','lbl-cf2','lbl-merge']
+    .forEach(id => $(id).style.opacity='0');
+  ['pill-main','pill-feat','head-group'].forEach(id => $(id).style.opacity='0');
+  $('replay').classList.remove('show');
+  $('cursor').style.display = '';
+  $('exp-files').innerHTML = '';
+  $('ef-root').style.opacity = '0';
+  clearTerm(); say('');
+  setPath('~');
+  await sleep(500);
+
+  // ── 1. Create the folder ────────────────────────────────────────────────────
+  say('Start with an empty folder. Nothing here yet — no git, no history.');
+  await type('mkdir my-project');
+  await sleep(600);
+  $('ef-root').style.opacity = '1';
+  await sleep(800);
+  clearTerm();
+  await type('cd my-project');
+  await sleep(600);
+  setPath('~/my-project');
+  await sleep(1400);
+
+  // ── 2. git init ─────────────────────────────────────────────────────────────
+  clearTerm();
+  say('<code>git init</code> turns a plain folder into a <b class="p">git repository</b>. It creates a hidden <code>.git/</code> folder where git stores every snapshot, every branch, and all the history.');
+  await type('git init');
+  await sleep(500);
+  addExpFile('ef-git', ICON_FOLD, '.git/', 'git-folder');
+  setPath('~/my-project', 'main');
+  await sleep(2800);
+
+  // ── 3. Create first file ────────────────────────────────────────────────────
+  clearTerm();
+  say('You write your first file. It only lives on disk — git sees it exists but isn\'t tracking it yet.');
+  await type('touch app.js');
+  await sleep(400);
+  addExpFile('ef-app', ICON_JS, 'app.js', 'new-file');
+  await sleep(2000);
+
+  // ── 4. First commit ─────────────────────────────────────────────────────────
+  clearTerm();
+  say('<b class="w">A commit is a snapshot.</b> <code>git add .</code> tells git which files to include, then <code>git commit</code> freezes them. That dot on the graph? Your entire project, captured at that moment.');
+  await type('git add .');
+  await sleep(700);
+  clearTerm();
+  await type('git commit -m "first commit"');
+  await sleep(500);
+  $('ef-app').classList.remove('new-file'); $('ef-app').classList.add('tracked');
+  await drawPath('l-main-pre', 'M 10 80 L 70 80', 300);
+  await popNode('c0');
+  showLabel('lbl-c0');
+  await sleep(2800);
+
+  // ── 5. Explain main ─────────────────────────────────────────────────────────
+  say('<b class="p">main</b> is the name of your default branch — think of it as your project\'s permanent timeline. Every commit goes here unless you deliberately branch off.');
+  showEl('pill-main');
+  await sleep(2800);
+
+  // ── 6. Explain HEAD ─────────────────────────────────────────────────────────
+  await moveHead(70, 80, false);
+  showEl('head-group');
+  say('<b class="y">HEAD</b> is git\'s bookmark. It always points to the commit you\'re currently sitting on. It moves forward every time you commit.');
+  await sleep(2800);
+
+  // ── 7. Second commit ────────────────────────────────────────────────────────
+  clearTerm();
+  say('You add a stylesheet and commit again. The timeline grows — and HEAD moves with it.');
+  await type('git commit -m "add styles"');
+  await sleep(400);
+  addExpFile('ef-css', ICON_CSS, 'styles.css', 'tracked');
+  await drawPath('l-main-pre', 'M 10 80 L 210 80', 500);
+  await popNode('c1');
+  showLabel('lbl-c1');
+  await moveHead(210, 80);
+  await sleep(2400);
+
+  // ── 8. Branch off ───────────────────────────────────────────────────────────
+  clearTerm();
+  say('New idea: a login page. Instead of editing directly on <b class="p">main</b>, you create a <b class="g">branch</b> — a separate track where your experiment can\'t break anything that\'s already working.');
+  await type('git checkout -b feat/login');
+  await sleep(600);
+  setPath('~/my-project', 'feat/login');
+  showEl('pill-feat');
+  await drawPath('l-branch-off', 'M 210 80 C 280 80 280 155 360 155', 600);
+  await sleep(2400);
+
+  // ── 9. Feature commits ──────────────────────────────────────────────────────
+  clearTerm();
+  say('Commits on <b class="g">feat/login</b> are completely isolated. <b class="p">main</b> doesn\'t change at all — both tracks coexist in the same <code>.git/</code> folder.');
+  await type('git commit -m "add login page"');
+  await sleep(400);
+  addExpFile('ef-login', ICON_JS, 'login.js', 'new-file');
+  await drawPath('l-feat', 'M 360 155 L 490 155', 500);
+  await popNode('c-f1');
+  showLabel('lbl-cf1');
+  await moveHead(360, 155);
+  await sleep(700);
+  clearTerm();
+  await type('git commit -m "add tests"');
+  await sleep(300);
+  await popNode('c-f2');
+  showLabel('lbl-cf2');
+  await moveHead(490, 155);
+  await sleep(2200);
+
+  // ── 10. Main moves independently ─────────────────────────────────────────────
+  clearTerm();
+  say('While you were on <b class="g">feat/login</b>, a teammate pushed a fix directly to <b class="p">main</b>. Two streams of work — both real, both safe, in the same repo.');
+  await type('git checkout main');
+  await sleep(600);
+  setPath('~/my-project', 'main');
+  clearTerm();
+  await type('git commit -m "fix typo"');
+  await sleep(400);
+  await drawPath('l-main-mid', 'M 210 80 L 490 80', 550);
+  await popNode('c-m2');
+  showLabel('lbl-cm2');
+  await moveHead(490, 80);
+  await sleep(2400);
+
+  // ── 11. Merge ────────────────────────────────────────────────────────────────
+  clearTerm();
+  say('<code>git merge feat/login</code> weaves the two histories into one new <b class="y">merge commit</b>. It has two parents — the tip of main and the tip of feat/login. Both lines of work become one.');
+  await type('git merge feat/login');
+  await sleep(600);
+  await drawPath('l-merge-in', 'M 490 155 C 565 155 565 80 640 80', 500);
+  await drawPath('l-merge-ext', 'M 490 80 L 640 80', 350);
+  await popNode('c-merge');
+  showLabel('lbl-merge');
+  await moveHead(640, 80);
+  $('ef-login').classList.remove('new-file'); $('ef-login').classList.add('tracked');
+  await sleep(2600);
+
+  // ── 12. Done ─────────────────────────────────────────────────────────────────
+  clearTerm();
+  say('<b class="p">Branch</b> to isolate your work. <b class="g">Commit</b> to save a snapshot. <b class="y">Merge</b> to bring it home. That\'s the whole loop.');
+  $('cursor').style.display = 'none';
+  await sleep(600);
+  $('replay').classList.add('show');
+}
+
+$('replay').addEventListener('click', run);
+window.addEventListener('load', run);
+</script>
+</body>
+</html>

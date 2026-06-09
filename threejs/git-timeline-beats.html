@@ -1,0 +1,462 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Git — a timeline of things</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#06070d;
+    --ink:#cdd6f0;
+    --dim:#5b6580;
+    --main:#7fe7ff;
+    --branch:#ffb454;
+    --conflict:#ff4d5e;
+    --resolved:#ffe6b0;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%;background:var(--bg);overflow:hidden;color:var(--ink);font-family:"IBM Plex Mono",monospace}
+  #c{position:fixed;inset:0;display:block}
+
+  .frame{position:fixed;inset:0;pointer-events:none;z-index:5}
+  .corner{position:absolute;width:26px;height:26px;border:1px solid rgba(127,231,255,.28)}
+  .corner.tl{top:18px;left:18px;border-right:0;border-bottom:0}
+  .corner.tr{top:18px;right:18px;border-left:0;border-bottom:0}
+  .corner.bl{bottom:18px;left:18px;border-right:0;border-top:0}
+  .corner.br{bottom:18px;right:18px;border-left:0;border-top:0}
+
+  .head{position:fixed;top:30px;left:34px;z-index:6;pointer-events:none}
+  .head .k{font-family:"Chakra Petch";font-weight:600;letter-spacing:.32em;font-size:11px;color:var(--dim);text-transform:uppercase}
+  .head .t{font-family:"Chakra Petch";font-weight:500;font-size:19px;letter-spacing:.02em;margin-top:6px;color:var(--ink)}
+
+  .legend{position:fixed;top:32px;right:46px;z-index:6;pointer-events:none;text-align:right;font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;line-height:2.1;color:var(--dim)}
+  .legend i{display:inline-block;width:8px;height:8px;margin-left:9px;vertical-align:middle;border-radius:1px}
+
+  /* big beat label, top-center of the focal object */
+  .beat{position:fixed;left:50%;top:21%;transform:translateX(-50%);z-index:6;text-align:center;pointer-events:none;width:min(680px,86vw)}
+  .beat .cmd{font-family:"Chakra Petch";font-weight:600;font-size:14px;letter-spacing:.18em;text-transform:uppercase;color:var(--main);transition:color .4s}
+  .beat.fade .cmd{animation:bin .5s ease both}
+  @keyframes bin{from{opacity:0;letter-spacing:.34em}to{opacity:1;letter-spacing:.18em}}
+
+  .desc{position:fixed;left:50%;bottom:128px;transform:translateX(-50%);z-index:6;text-align:center;width:min(560px,84vw);font-size:13.5px;line-height:1.62;color:var(--ink);opacity:.9;pointer-events:none}
+  .desc.fade{animation:din .55s ease both}
+  @keyframes din{from{opacity:0;transform:translateX(-50%) translateY(8px)}to{opacity:.9;transform:translateX(-50%) translateY(0)}}
+
+  /* the timeline of things */
+  .rail{position:fixed;left:50%;bottom:78px;transform:translateX(-50%);z-index:6;width:min(680px,86vw);height:34px;pointer-events:none}
+  .rail .line{position:absolute;top:7px;left:0;right:0;height:1px;background:rgba(205,214,240,.14)}
+  .rail .fill{position:absolute;top:7px;left:0;height:1px;background:linear-gradient(90deg,var(--main),var(--resolved));box-shadow:0 0 8px rgba(127,231,255,.6);transition:width .12s linear}
+  .node{position:absolute;top:0;transform:translateX(-50%);text-align:center}
+  .node .dot{width:8px;height:8px;border-radius:50%;background:#222b40;margin:3px auto 0;border:1px solid rgba(205,214,240,.2);transition:.3s}
+  .node.on .dot{background:var(--main);border-color:var(--main);box-shadow:0 0 12px 2px rgba(127,231,255,.7)}
+  .node.done .dot{background:rgba(205,214,240,.35);border-color:rgba(205,214,240,.35)}
+  .node .lbl{margin-top:8px;font-size:8.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--dim);transition:.3s;white-space:nowrap}
+  .node.on .lbl{color:var(--ink)}
+
+  .bar{position:fixed;left:50%;bottom:30px;transform:translateX(-50%);z-index:7;display:flex;align-items:center;gap:18px;width:min(680px,86vw)}
+  .play{pointer-events:auto;flex:0 0 auto;width:42px;height:42px;border-radius:50%;border:1px solid rgba(127,231,255,.35);background:rgba(127,231,255,.06);color:var(--main);cursor:pointer;display:grid;place-items:center;transition:.25s;backdrop-filter:blur(4px)}
+  .play:hover{background:rgba(127,231,255,.14);border-color:var(--main)}
+  .play svg{width:14px;height:14px;fill:currentColor}
+  .track{flex:1;display:flex;align-items:center;height:34px}
+  .track input{-webkit-appearance:none;appearance:none;width:100%;height:2px;background:rgba(205,214,240,.16);outline:none;cursor:pointer;border-radius:2px}
+  .track input::-webkit-slider-thumb{-webkit-appearance:none;width:12px;height:12px;border-radius:50%;background:var(--main);box-shadow:0 0 14px 2px rgba(127,231,255,.7);cursor:grab}
+  .track input::-moz-range-thumb{width:12px;height:12px;border:0;border-radius:50%;background:var(--main);box-shadow:0 0 14px 2px rgba(127,231,255,.7)}
+  .pct{flex:0 0 auto;font-family:"Chakra Petch";font-weight:500;font-size:11px;letter-spacing:.12em;color:var(--dim);min-width:34px;text-align:right}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+
+<div class="frame">
+  <div class="corner tl"></div><div class="corner tr"></div>
+  <div class="corner bl"></div><div class="corner br"></div>
+</div>
+
+<div class="head">
+  <div class="k">// concept sketch v2</div>
+  <div class="t">Git &mdash; a timeline of things</div>
+</div>
+
+<div class="legend">
+  main<i style="background:var(--main)"></i><br>
+  add-resources<i style="background:var(--branch)"></i><br>
+  conflict<i style="background:var(--conflict)"></i>
+</div>
+
+<div class="beat" id="beat"><div class="cmd" id="beatCmd">git init</div></div>
+<div class="desc" id="desc">Your file becomes the first snapshot.</div>
+
+<div class="rail" id="rail">
+  <div class="line"></div>
+  <div class="fill" id="fill"></div>
+</div>
+
+<div class="bar">
+  <button class="play" id="play" aria-label="play / pause"><svg id="pIcon" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></button>
+  <div class="track"><input id="scrub" type="range" min="0" max="1000" value="0" /></div>
+  <div class="pct" id="pct">00%</div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+/* ------------------------------------------------------------------ *
+ *  GIT — TIMELINE OF THINGS  (beat sequencer)
+ *  One hero object on screen at a time. Motion is grammar:
+ *    right-in / left-out  = a commit (time)
+ *    up                   = branch off
+ *    down                 = back to main
+ *    punch-in             = inspect the conflict
+ *    pull-back            = reveal local -> remote (push)
+ * ------------------------------------------------------------------ */
+
+const COL = {
+  bg:0x06070d, main:0x7fe7ff, branch:0xffb454,
+  conflict:0xff4d5e, resolved:0xffe6b0, grid:0x16203a, gridUp:0x123040
+};
+
+const clamp  = (v,a,b)=>Math.min(b,Math.max(a,v));
+const lerp   = (a,b,t)=>a+(b-a)*t;
+const smooth = (e0,e1,x)=>{const t=clamp((x-e0)/(e1-e0),0,1);return t*t*(3-2*t);};
+const bump   = (a,b,x)=>{const m=(a+b)/2;return x<m?smooth(a,m,x):1-smooth(m,b,x);};
+
+// ---- renderer / scene / camera ----
+const canvas = document.getElementById('c');
+const renderer = new THREE.WebGLRenderer({canvas, antialias:true});
+renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
+renderer.outputEncoding = THREE.sRGBEncoding;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.18;
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(COL.bg);
+scene.fog = new THREE.FogExp2(COL.bg, 0.028);
+
+const camera = new THREE.PerspectiveCamera(46, 1, 0.1, 200);
+
+function resize(){
+  const w=innerWidth,h=innerHeight;
+  renderer.setSize(w,h); camera.aspect=w/h; camera.updateProjectionMatrix();
+}
+addEventListener('resize', resize);
+
+// ------------------------------------------------------------------
+// neon-vector vocabulary
+// ------------------------------------------------------------------
+function halo(color,size,intensity){
+  const cv=document.createElement('canvas'); cv.width=cv.height=128;
+  const ctx=cv.getContext('2d');
+  const g=ctx.createRadialGradient(64,64,0,64,64,64);
+  const c=new THREE.Color(color); const rgb=`${(c.r*255)|0},${(c.g*255)|0},${(c.b*255)|0}`;
+  g.addColorStop(0,`rgba(${rgb},${intensity})`);
+  g.addColorStop(0.4,`rgba(${rgb},${intensity*0.4})`);
+  g.addColorStop(1,`rgba(${rgb},0)`);
+  ctx.fillStyle=g; ctx.fillRect(0,0,128,128);
+  const tex=new THREE.CanvasTexture(cv);
+  const s=new THREE.Sprite(new THREE.SpriteMaterial({map:tex,blending:THREE.AdditiveBlending,depthWrite:false,transparent:true}));
+  s.scale.set(size,size,1); return s;
+}
+function faceTexture(lines,hex){
+  const W=512,H=320,cv=document.createElement('canvas'); cv.width=W; cv.height=H;
+  const ctx=cv.getContext('2d'); ctx.clearRect(0,0,W,H);
+  ctx.font="500 30px 'IBM Plex Mono', monospace"; ctx.textBaseline='top';
+  let y=44; for(const ln of lines){ ctx.fillStyle=ln.dim?'rgba(205,214,240,.45)':hex; ctx.fillText(ln.t,46,y); y+=46; }
+  const tex=new THREE.CanvasTexture(cv); tex.encoding=THREE.sRGBEncoding; return tex;
+}
+function label(text,hex,scale=1){
+  const W=512,H=128,cv=document.createElement('canvas'); cv.width=W; cv.height=H;
+  const ctx=cv.getContext('2d');
+  ctx.font="600 60px 'Chakra Petch', sans-serif"; ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillStyle=hex; ctx.fillText(text,W/2,H/2);
+  const tex=new THREE.CanvasTexture(cv); tex.encoding=THREE.sRGBEncoding;
+  const s=new THREE.Sprite(new THREE.SpriteMaterial({map:tex,transparent:true,depthWrite:false}));
+  s.scale.set(2.2*scale,0.55*scale,1); return s;
+}
+
+// a snapshot slab — built at origin; the sequencer moves the group
+function makeSlab(lines,color,opts={}){
+  const g=new THREE.Group();
+  const w=2.5,h=1.6,d=0.16;
+  const body=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),
+    new THREE.MeshBasicMaterial({color:0x0a0f1c,transparent:true,opacity:0.42,depthWrite:false}));
+  const edges=new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(w,h,d)),
+    new THREE.LineBasicMaterial({color,transparent:true}));
+  const faceMat=new THREE.MeshBasicMaterial({map:faceTexture(lines,'#'+new THREE.Color(color).getHexString()),transparent:true,depthWrite:false,side:THREE.DoubleSide});
+  const face=new THREE.Mesh(new THREE.PlaneGeometry(w*0.92,h*0.92),faceMat); face.position.z=d/2+0.002;
+  const hl=halo(color,4.8,0.5); hl.position.z=-d;
+  g.add(body,edges,face,hl);
+  let lab=null;
+  if(opts.label){ lab=label(opts.label,'#'+new THREE.Color(color).getHexString()); lab.position.y=h/2+0.45; g.add(lab); }
+  g.visible=false; scene.add(g);
+  const baseEdge=color;
+  return {
+    g, edges, face, halo:hl, lab,
+    setOpacity(o){
+      g.visible=o>0.002;
+      edges.material.opacity=o;
+      body.material.opacity=0.42*o;
+      faceMat.opacity=o;
+      hl.material.opacity=0.5*o;
+      if(lab) lab.material.opacity=o;
+    },
+    stamp(s){ // brief flash + scale tick when a commit lands
+      hl.material.opacity = Math.max(hl.material.opacity, s*0.95);
+      const k=1+0.04*s; g.scale.set(k,k,k);
+    }
+  };
+}
+
+// ------------------------------------------------------------------
+// BEATS  (one focal thing each)
+// ------------------------------------------------------------------
+const beats=[
+  {cmd:'git init · commit',        short:'file',     col:'var(--main)',     desc:'Your file becomes the first snapshot. A repo is a folder Git watches.'},
+  {cmd:'git commit',               short:'commit',   col:'var(--main)',     desc:'A second snapshot slides in. Each commit freezes the file exactly as it is.'},
+  {cmd:'checkout -b add-resources',short:'branch',   col:'var(--branch)',   desc:'A branch lifts away to experiment on. main stays put, untouched.'},
+  {cmd:'git commit · main',        short:'main',     col:'var(--main)',     desc:'Back down on main, a different edit to the same lines. Two versions now exist.'},
+  {cmd:'git merge → conflict',     short:'conflict', col:'var(--conflict)', desc:'The two versions slam together on the same lines. Git stops and asks you.'},
+  {cmd:'resolve · commit',         short:'resolve',  col:'var(--resolved)', desc:'You keep the best of both. One clean, merged snapshot.'},
+  {cmd:'git push origin main',     short:'push',     col:'var(--resolved)', desc:'Pull back: the snapshot was on your machine. Now it lifts to GitHub, public.'},
+];
+const N=beats.length;
+const inBeat=(i,t)=>{const lt=(t-i/N)*N; return (lt>=0&&lt<=1)?lt:-1;};
+
+// per-beat camera framing  (camera sits on +Z looking at origin)
+const camKey=[
+  {d:6.6,y:0.3,look:0.0},
+  {d:6.6,y:0.3,look:0.0},
+  {d:6.3,y:1.9,look:1.5},   // up for the branch
+  {d:6.6,y:0.3,look:0.0},   // back down to main
+  {d:3.7,y:0.3,look:0.0},   // punch in on conflict
+  {d:5.4,y:0.3,look:0.0},   // ease back out
+  {d:11.5,y:1.3,look:1.2},  // pull way back for the push
+];
+
+const SX=8.5, SY=5.5;  // off-screen slide distances
+
+// ---- the objects ----
+const oFile   = makeSlab([{t:'# My Learning Log'},{t:'## About',dim:true},{t:'- learning git',dim:true}], COL.main);
+const oCommit = makeSlab([{t:'## Goals'},{t:'## What I Learned'},{t:'- git tracks change',dim:true}], COL.main);
+const oBranch = makeSlab([{t:'- tracks change',dim:true},{t:'- branches let you'},{t:'- merge when ready'}], COL.branch, {label:'add-resources'});
+const oMain   = makeSlab([{t:'- a time machine'},{t:'- every commit is'},{t:'  a snapshot',dim:true}], COL.main, {label:'main'});
+const mBranch = makeSlab([{t:'- branches let you'},{t:'- merge when ready'}], COL.branch);
+const mMain   = makeSlab([{t:'- a time machine'},{t:'- a snapshot'}], COL.main);
+const oResolved = makeSlab([{t:'- a time machine'},{t:'- a snapshot'},{t:'- branches + merge'}], COL.resolved);
+
+// conflict cluster
+const conflict=new THREE.Group();
+const cHalo=halo(COL.conflict,5.6,0.65); conflict.add(cHalo);
+const cm1=label('<<<<<<<','#ff4d5e',0.85); cm1.position.y=0.55; conflict.add(cm1);
+const cm2=label('=======','#ff8a93',0.85); conflict.add(cm2);
+const cm3=label('>>>>>>>','#ff4d5e',0.85); cm3.position.y=-0.55; conflict.add(cm3);
+const shards=[];
+for(let i=0;i<8;i++){
+  const sh=new THREE.Mesh(new THREE.BoxGeometry(0.04,0.5+Math.random()*0.7,0.04),
+    new THREE.MeshBasicMaterial({color:COL.conflict,transparent:true,opacity:0}));
+  sh.position.set((Math.random()-0.5)*2.6,(Math.random()-0.5)*1.5,(Math.random()-0.5)*0.5);
+  sh.rotation.z=(Math.random()-0.5)*1.3; conflict.add(sh); shards.push(sh);
+}
+conflict.visible=false; scene.add(conflict);
+
+// push-beat environment
+function grid(y,color){
+  const g=new THREE.GridHelper(70,70,color,color); g.position.set(0,y,0);
+  g.material.transparent=true; g.material.opacity=0; g.visible=false; scene.add(g); return g;
+}
+const ground=grid(-2.7,COL.grid);     // your computer
+const sky=grid(4.2,COL.gridUp);        // github
+const ribbons=[];
+for(let i=0;i<3;i++){
+  const x=(i-1)*0.9;
+  const cv=new THREE.CatmullRomCurve3([
+    new THREE.Vector3(x,0.4,0),
+    new THREE.Vector3(x+(Math.random()-0.5)*1.2,2.2,0.2),
+    new THREE.Vector3(x,3.9,0)
+  ]);
+  const m=new THREE.Mesh(new THREE.TubeGeometry(cv,40,0.012,6,false),
+    new THREE.MeshBasicMaterial({color:COL.resolved,transparent:true,opacity:0}));
+  m.visible=false; scene.add(m); ribbons.push(m);
+}
+const ghLabel=label('GitHub','#ffe6b0',1.1); ghLabel.position.set(0,5.0,0); ghLabel.material.opacity=0; scene.add(ghLabel);
+const localLabel=label('your machine','#5b6580',0.8); localLabel.position.set(0,-2.0,0); localLabel.material.opacity=0; scene.add(localLabel);
+
+// atmosphere
+const dustGeo=new THREE.BufferGeometry(); const NP=300, pa=new Float32Array(NP*3);
+for(let i=0;i<NP;i++){ pa[i*3]=(Math.random()-0.5)*20; pa[i*3+1]=(Math.random()-0.5)*12; pa[i*3+2]=(Math.random()-0.5)*14-2; }
+dustGeo.setAttribute('position',new THREE.BufferAttribute(pa,3));
+const dust=new THREE.Points(dustGeo,new THREE.PointsMaterial({color:0x9fb4d8,size:0.018,transparent:true,opacity:0.45,depthWrite:false}));
+scene.add(dust);
+
+// ------------------------------------------------------------------
+// hide all focal objects, then let the current beat show its own
+// ------------------------------------------------------------------
+function hideAll(){
+  [oFile,oCommit,oBranch,oMain,mBranch,mMain,oResolved].forEach(o=>o.setOpacity(0));
+  conflict.visible=false;
+  ground.visible=sky.visible=false; ground.material.opacity=sky.material.opacity=0;
+  ribbons.forEach(r=>{r.visible=false;r.material.opacity=0;});
+  ghLabel.material.opacity=localLabel.material.opacity=0;
+}
+
+// ------------------------------------------------------------------
+// DRIVE EVERYTHING FROM t in [0,1]
+// ------------------------------------------------------------------
+function apply(t){
+  hideAll();
+
+  // ---- camera: hold during a beat, glide to next in the tail ----
+  const cf=t*N, i=clamp(Math.floor(cf),0,N-1), frac=cf-i, iN=Math.min(i+1,N-1);
+  const e=smooth(0.6,1.0,frac);                 // only move in the last 40%
+  const d=lerp(camKey[i].d,camKey[iN].d,e);
+  const cy=lerp(camKey[i].y,camKey[iN].y,e);
+  const look=lerp(camKey[i].look,camKey[iN].look,e);
+  camera.position.set(0,cy,d);
+  camera.lookAt(0,look,0);
+
+  // helper for a standard right-in / left-out commit slab
+  const commitSlab=(o,lt,centerY=0)=>{
+    if(lt<0) return;
+    const ein=smooth(0,0.34,lt), eout=smooth(0.66,1,lt);
+    const x=SX*(1-ein) - SX*eout;
+    o.g.position.set(x,centerY,0);
+    o.g.rotation.y=(1-ein)*0.5 - eout*0.5;
+    o.setOpacity(ein*(1-eout));
+    o.stamp(bump(0.40,0.56,lt));
+  };
+
+  // BEAT 0 — the file / first commit
+  commitSlab(oFile, inBeat(0,t));
+  // BEAT 1 — second commit
+  commitSlab(oCommit, inBeat(1,t));
+
+  // BEAT 2 — branch lifts UP
+  let lt=inBeat(2,t);
+  if(lt>=0){
+    const ein=smooth(0,0.36,lt), eout=smooth(0.66,1,lt);
+    const y=1.6 - SY*(1-ein) - SY*eout;          // rise from below, sink back on exit
+    oBranch.g.position.set(0,y,0);
+    oBranch.g.rotation.y=(1-ein)*0.4;
+    oBranch.setOpacity(ein*(1-eout));
+    oBranch.stamp(bump(0.42,0.58,lt));
+  }
+
+  // BEAT 3 — back DOWN to main, conflicting commit
+  lt=inBeat(3,t);
+  if(lt>=0){
+    const ein=smooth(0,0.34,lt), eout=smooth(0.62,1,lt);
+    const x=-SX*(1-ein) - 2.2*eout;              // arrives from the left (from history)
+    oMain.g.position.set(x,0,0);
+    oMain.setOpacity(ein*(1-eout));
+    oMain.stamp(bump(0.40,0.56,lt));
+  }
+
+  // BEAT 4 — MERGE: two slide to center, collide, punch-in on conflict
+  lt=inBeat(4,t);
+  if(lt>=0){
+    const ein=smooth(0,0.40,lt), fade=smooth(0.72,1,lt);
+    mBranch.g.position.set(0, 0.62 + (SY-0.62)*(1-ein), 0);
+    mMain.g.position.set(0, -0.62 - (SY-0.62)*(1-ein), 0);
+    const op=ein*(1-fade);
+    mBranch.setOpacity(op); mMain.setOpacity(op);
+    // collision shake once they meet
+    const meet=smooth(0.36,0.5,lt)*(1-fade);
+    const shake=Math.sin(performance.now()*0.03)*0.03*meet;
+    mBranch.g.position.x=shake; mMain.g.position.x=-shake;
+    // conflict flare
+    const cf2=bump(0.44,0.86,lt);
+    conflict.visible=cf2>0.01;
+    cm1.material.opacity=cf2; cm2.material.opacity=cf2; cm3.material.opacity=cf2;
+    cHalo.material.opacity=cf2*0.7;
+    shards.forEach(s=>s.material.opacity=cf2*0.9);
+    conflict.position.y=Math.sin(performance.now()*0.05)*0.02*cf2;
+  }
+
+  // BEAT 5 & 6 share the resolved slab (the merged file is what gets pushed)
+  const lt5=inBeat(5,t), lt6=inBeat(6,t);
+  if(lt5>=0){
+    const ein=smooth(0,0.42,lt5);
+    oResolved.g.position.set(0,0,0);
+    const k=lerp(0.5,1,ein); oResolved.g.scale.set(k,k,k);
+    oResolved.setOpacity(ein);
+  }
+  if(lt6>=0){
+    // pull-back reveal of local -> remote, slab lifts to GitHub
+    oResolved.g.scale.set(1,1,1);
+    const rise=smooth(0.28,0.8,lt6);
+    oResolved.g.position.set(0, lerp(0,4.0,rise), 0);
+    oResolved.setOpacity(1);
+    const g=smooth(0.05,0.4,lt6), s=smooth(0.32,0.72,lt6);
+    ground.visible=true; ground.material.opacity=g*0.6;
+    sky.visible=true;    sky.material.opacity=s*0.55;
+    localLabel.material.opacity=g*0.8;
+    ghLabel.material.opacity=s;
+    const rb=bump(0.34,0.9,lt6);
+    ribbons.forEach(r=>{ r.visible=rb>0.01; r.material.opacity=rb*0.9; });
+  }
+}
+
+// ------------------------------------------------------------------
+// timeline-of-things UI (the connective tissue)
+// ------------------------------------------------------------------
+const rail=document.getElementById('rail'), fill=document.getElementById('fill');
+const nodes=[];
+beats.forEach((b,i)=>{
+  const n=document.createElement('div'); n.className='node';
+  n.style.left=((i+0.5)/N*100)+'%';
+  n.innerHTML=`<div class="dot"></div><div class="lbl">${b.short}</div>`;
+  rail.appendChild(n); nodes.push(n);
+});
+const beatEl=document.getElementById('beat'), cmdEl=document.getElementById('beatCmd'), descEl=document.getElementById('desc');
+let lastBeat=-1;
+function updateUI(t){
+  const cur=clamp(Math.floor(t*N),0,N-1);
+  fill.style.width=(t*100)+'%';
+  nodes.forEach((n,i)=>{ n.classList.toggle('on',i===cur); n.classList.toggle('done',i<cur); });
+  if(cur!==lastBeat){
+    lastBeat=cur;
+    cmdEl.textContent=beats[cur].cmd; cmdEl.style.color=beats[cur].col;
+    descEl.textContent=beats[cur].desc;
+    beatEl.classList.remove('fade'); void beatEl.offsetWidth; beatEl.classList.add('fade');
+    descEl.classList.remove('fade'); void descEl.offsetWidth; descEl.classList.add('fade');
+  }
+}
+
+// ------------------------------------------------------------------
+// transport
+// ------------------------------------------------------------------
+let t=0, playing=true, dragging=false;
+const scrub=document.getElementById('scrub'), pct=document.getElementById('pct'),
+      playBtn=document.getElementById('play'), pIcon=document.getElementById('pIcon');
+const PLAY='M8 5v14l11-7z', PAUSE='M6 5h4v14H6zM14 5h4v14h-4z';
+function setPlaying(p){ playing=p; pIcon.setAttribute('d',p?PAUSE:PLAY); }
+playBtn.onclick=()=>{ if(t>=0.999)t=0; setPlaying(!playing); };
+scrub.oninput=()=>{ t=scrub.value/1000; setPlaying(false); };
+scrub.addEventListener('pointerdown',()=>dragging=true);
+addEventListener('pointerup',()=>dragging=false);
+
+// ------------------------------------------------------------------
+// loop
+// ------------------------------------------------------------------
+let last=performance.now();
+function tick(now){
+  const dt=Math.min((now-last)/1000,0.05); last=now;
+  if(playing&&!dragging){
+    t+=dt*0.05;                       // ~20s full pass, ~2.8s per beat
+    if(t>=1){t=1;setPlaying(false);}
+    scrub.value=(t*1000)|0;
+  }
+  pct.textContent=String(Math.round(t*100)).padStart(2,'0')+'%';
+  updateUI(t);
+  apply(t);
+  const dp=dustGeo.attributes.position.array;
+  for(let i=0;i<NP;i++){ dp[i*3+1]+=dt*0.05; if(dp[i*3+1]>6) dp[i*3+1]=-6; }
+  dustGeo.attributes.position.needsUpdate=true;
+  renderer.render(scene,camera);
+  requestAnimationFrame(tick);
+}
+resize(); setPlaying(true); requestAnimationFrame(tick);
+</script>
+</body>
+</html>

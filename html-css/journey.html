@@ -1,0 +1,663 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>The Journey of Code — local → remote</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0e1016; --bg2:#11141d;
+  --panel:#161a25; --panel2:#1b2030;
+  --line:rgba(255,255,255,.08); --line2:rgba(255,255,255,.16);
+  --txt:#e7eaf2; --muted:#8a93a8; --faint:#5b6477;
+  --local:#38bdf8; --remote:#fbbf24;
+  --staged:#34d399; --commit:#a78bfa; --file:#e2e8f0;
+  --r:16px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{
+  background:
+    radial-gradient(900px 500px at 18% -10%, rgba(56,189,248,.10), transparent 60%),
+    radial-gradient(700px 500px at 92% -10%, rgba(251,191,36,.09), transparent 60%),
+    var(--bg);
+  color:var(--txt); font-family:'Inter',system-ui,sans-serif;
+  min-height:100vh; display:flex; flex-direction:column; align-items:center;
+  padding:72px 20px 48px; gap:22px;
+}
+
+/* ---------- shared page switcher ---------- */
+.page-switch{
+  position:fixed; top:14px; left:50%; transform:translateX(-50%);
+  z-index:100; display:flex; gap:4px;
+  background:rgba(22,26,37,.85); backdrop-filter:blur(10px);
+  border:1px solid var(--line2); border-radius:999px; padding:4px;
+}
+.page-switch a{
+  text-decoration:none; color:var(--muted); font-size:.8rem; font-weight:500;
+  padding:6px 15px; border-radius:999px; transition:all .15s;
+}
+.page-switch a:hover{background:rgba(255,255,255,.06); color:var(--txt)}
+.page-switch a.active{background:rgba(56,189,248,.16); color:var(--local)}
+
+/* ---------- title ---------- */
+.title{text-align:center}
+.title h1{font-size:1.28rem;font-weight:700;letter-spacing:-.01em}
+.title p{font-size:.86rem;color:var(--muted);margin-top:4px}
+
+/* ---------- mode toggle ---------- */
+.modes{
+  display:flex; gap:4px; padding:4px; border-radius:999px;
+  background:rgba(255,255,255,.03); border:1px solid var(--line2);
+}
+.mode{
+  font:inherit; font-size:.82rem; font-weight:500; cursor:pointer;
+  padding:7px 16px; border-radius:999px; border:1px solid transparent;
+  background:transparent; color:var(--muted); transition:all .15s;
+}
+.mode:hover{color:var(--txt)}
+.mode.on{background:rgba(56,189,248,.16); color:var(--local); border-color:rgba(56,189,248,.35)}
+
+/* ---------- stage ---------- */
+.stage{
+  position:relative; width:100%; max-width:1120px; height:430px;
+  display:flex; align-items:stretch; gap:0;
+}
+.overlay{position:absolute;inset:0;pointer-events:none;z-index:5}
+
+/* regions */
+.region{
+  position:relative; border-radius:var(--r);
+  border:1px solid var(--line); background:rgba(255,255,255,.012);
+  opacity:0; transform:translateY(10px) scale(.985);
+  transition:opacity .6s ease, transform .6s ease;
+  padding:34px 16px 16px;
+}
+.region.show{opacity:1; transform:none}
+.region.local{flex:1 1 auto; border-color:rgba(56,189,248,.28); background:rgba(56,189,248,.03)}
+.region.remote{flex:0 0 26%; margin-left:120px; border-color:rgba(251,191,36,.30); background:rgba(251,191,36,.035)}
+
+.region-tag{
+  position:absolute; top:-11px; left:18px; padding:3px 11px; border-radius:999px;
+  font-size:.66rem; font-weight:700; letter-spacing:.08em; text-transform:uppercase;
+  display:flex; align-items:center; gap:6px; background:var(--bg2);
+}
+.region.local  .region-tag{color:var(--local); border:1px solid rgba(56,189,248,.4)}
+.region.remote .region-tag{color:var(--remote);border:1px solid rgba(251,191,36,.42)}
+.region-tag svg{width:13px;height:13px}
+.region-sub{position:absolute;top:9px;right:14px;font-size:.62rem;color:var(--faint);font-family:'JetBrains Mono',monospace}
+
+/* sub-zones inside local */
+.zones{display:grid; grid-template-columns:repeat(3,1fr); gap:12px; height:100%}
+.zone{
+  border:1px dashed var(--line2); border-radius:12px; background:rgba(0,0,0,.18);
+  display:flex; flex-direction:column; padding:10px 10px 12px;
+  opacity:0; transform:translateY(8px); transition:opacity .45s ease, transform .45s ease, border-color .3s, box-shadow .3s;
+}
+.zone.show{opacity:1;transform:none}
+.zone-head{font-size:.66rem;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);margin-bottom:3px;white-space:nowrap}
+.zone-cmd{font-size:.6rem;color:var(--faint);font-family:'JetBrains Mono',monospace;margin-bottom:10px}
+.zone-body{flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px}
+.zone.hot{box-shadow:0 0 0 1px currentColor inset, 0 0 22px rgba(255,255,255,.05)}
+.zone.wd.hot   {border-color:var(--file);   color:var(--file)}
+.zone.stg.hot  {border-color:var(--staged); color:var(--staged)}
+.zone.repo.hot {border-color:var(--commit); color:var(--commit)}
+.remote .zone-body{height:100%}
+
+/* network link between local & remote */
+.netwrap{position:absolute; left:0; right:0; top:0; bottom:0; pointer-events:none; z-index:1}
+.netline{
+  position:absolute; top:50%; height:2px; border-radius:2px;
+  background:repeating-linear-gradient(90deg,var(--remote) 0 7px,transparent 7px 14px);
+  opacity:0; transition:opacity .5s ease;
+}
+.netline.show{opacity:.5}
+.netlabel{
+  position:absolute; top:calc(50% - 26px); transform:translateX(-50%);
+  font-size:.6rem; letter-spacing:.06em; text-transform:uppercase; color:var(--faint);
+  font-family:'JetBrains Mono',monospace; opacity:0; transition:opacity .5s;
+  display:flex; align-items:center; gap:5px;
+}
+.netlabel.show{opacity:.8}
+.netlabel svg{width:12px;height:12px}
+
+/* ---------- chips (code objects) ---------- */
+.card{
+  width:120px; border-radius:10px; padding:9px 10px; font-family:'JetBrains Mono',monospace;
+  border:1px solid var(--line2); background:var(--panel2);
+  font-size:.66rem; line-height:1.5; color:var(--txt);
+  transition:all .3s ease;
+}
+.card .fname{display:flex;align-items:center;gap:6px;font-weight:600;font-size:.7rem;margin-bottom:5px}
+.card .fname svg{width:13px;height:13px}
+.card .snippet{margin:3px 0;font-size:.58rem;line-height:1.6;color:var(--muted)}
+.card .snippet .kw{color:#c792ea}.card .snippet .fn{color:#82aaff}.card .snippet .str{color:#c3e88d}
+.card .badge{
+  margin-top:7px; display:inline-flex; align-items:center; gap:4px;
+  font-size:.56rem; font-weight:700; letter-spacing:.04em; text-transform:uppercase;
+  padding:2px 7px; border-radius:999px;
+}
+.card .badge svg{width:10px;height:10px}
+
+/* unsaved snippet */
+.card.unsaved{border-style:dashed;border-color:var(--faint);background:rgba(255,255,255,.02);animation:breathe 2s ease-in-out infinite}
+.card.unsaved .fname{color:var(--muted)}
+.card.unsaved .badge{background:rgba(138,147,168,.16);color:var(--muted)}
+@keyframes breathe{0%,100%{opacity:.78}50%{opacity:1}}
+
+/* saved file */
+.card.file{border-color:var(--line2)}
+.card.file .fname{color:var(--file)}
+.card.file .badge{background:rgba(226,232,240,.12);color:var(--file)}
+
+/* staged */
+.card.staged{border-color:var(--staged);background:rgba(52,211,153,.07)}
+.card.staged .fname{color:var(--staged)}
+.card.staged .snippet{color:rgba(52,211,153,.6)}
+.card.staged .badge{background:rgba(52,211,153,.16);color:var(--staged)}
+
+.card.dim{opacity:.34; filter:saturate(.5)}
+
+/* commit node */
+.commit{display:flex;flex-direction:column;align-items:center;gap:6px;animation:pop .35s ease}
+.commit .dot{
+  width:30px;height:30px;border-radius:50%;
+  background:radial-gradient(circle at 35% 30%, #c4b5fd, var(--commit));
+  border:2px solid rgba(167,139,250,.5); box-shadow:0 0 16px rgba(167,139,250,.45);
+}
+.commit.remote-dot .dot{
+  background:radial-gradient(circle at 35% 30%, #fde68a, var(--remote));
+  border-color:rgba(251,191,36,.5); box-shadow:0 0 16px rgba(251,191,36,.45);
+}
+.commit .hash{font-family:'JetBrains Mono',monospace;font-size:.6rem;color:var(--muted)}
+.commit .msg{font-size:.62rem;color:var(--txt);text-align:center;max-width:130px;line-height:1.3}
+@keyframes pop{from{transform:scale(.5);opacity:0}to{transform:scale(1);opacity:1}}
+
+/* flying ghost */
+.ghost{position:absolute;transform:translate(-50%,-50%);z-index:9}
+
+/* spawn fade for resting chips */
+.spawn{animation:spawn .3s ease}
+@keyframes spawn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+
+/* ---------- terminal + caption ---------- */
+.readout{width:100%;max-width:1120px;display:flex;flex-direction:column;gap:12px;align-items:center}
+.terminal{
+  width:100%; max-width:560px; background:#0a0c12; border:1px solid var(--line2);
+  border-radius:12px; overflow:hidden; box-shadow:0 8px 30px rgba(0,0,0,.35);
+}
+.term-bar{display:flex;align-items:center;gap:6px;padding:8px 12px;background:rgba(255,255,255,.03);border-bottom:1px solid var(--line)}
+.term-bar i{width:10px;height:10px;border-radius:50%;display:inline-block}
+.term-bar i:nth-child(1){background:#ff5f56}.term-bar i:nth-child(2){background:#ffbd2e}.term-bar i:nth-child(3){background:#27c93f}
+.term-bar span{margin-left:8px;font-size:.62rem;color:var(--faint);font-family:'JetBrains Mono',monospace}
+.term-body{padding:12px 14px;min-height:42px;font-family:'JetBrains Mono',monospace;font-size:.82rem;display:flex;align-items:center}
+.term-body .prompt{color:var(--staged);margin-right:8px;flex:0 0 auto}
+.term-body .cmd{flex:0 0 auto}
+.term-body .cmd{color:var(--txt)}
+.term-body .cursor{display:inline-block;width:8px;height:1.05em;vertical-align:-2px;background:var(--txt);margin-left:2px;animation:blink 1s step-end infinite}
+@keyframes blink{50%{opacity:0}}
+/* live input — only used in interactive mode */
+.cmd-input{
+  display:none; flex:1 1 auto; width:auto; min-width:0; border:none; outline:none; background:transparent;
+  font-family:'JetBrains Mono',monospace; font-size:.82rem; color:var(--txt);
+  caret-color:var(--staged); padding:0;
+}
+.cmd-input::placeholder{color:var(--faint)}
+body.interactive .term-body .cmd,
+body.interactive .term-body .cursor{display:none}
+body.interactive .cmd-input{display:inline-block}
+body.interactive .terminal{border-color:rgba(56,189,248,.4); box-shadow:0 0 0 1px rgba(56,189,248,.12), 0 8px 30px rgba(0,0,0,.35)}
+
+/* next-step hint (interactive) */
+.hint{
+  min-height:1.1em; font-size:.78rem; color:var(--local); font-weight:500;
+  font-family:'JetBrains Mono',monospace; opacity:0; transition:opacity .2s;
+}
+body.interactive .hint{opacity:.9}
+.hint code{background:rgba(56,189,248,.12); padding:1px 6px; border-radius:5px}
+
+/* save button on the editor (interactive only) */
+.save-btn{
+  display:none; align-self:center; margin-top:10px;
+  font:inherit; font-size:.7rem; font-weight:600; cursor:pointer;
+  padding:6px 12px; border-radius:8px; color:var(--file);
+  background:rgba(226,232,240,.08); border:1px solid var(--line2);
+  font-family:'JetBrains Mono',monospace; transition:all .15s;
+}
+.save-btn small{opacity:.6;font-weight:500}
+.save-btn:hover{border-color:var(--file); background:rgba(226,232,240,.14)}
+body.interactive .save-btn.show{display:inline-flex; align-items:center}
+
+.caption{
+  text-align:center; font-size:1rem; font-weight:500; color:var(--txt);
+  min-height:1.5em; max-width:640px; transition:opacity .25s;
+}
+.caption b{font-weight:700}
+.caption.cyan b{color:var(--local)} .caption.green b{color:var(--staged)}
+.caption.purple b{color:var(--commit)} .caption.amber b{color:var(--remote)}
+/* per-word overrides for mixed-color captions */
+.caption b.cyan{color:var(--local)} .caption b.green{color:var(--staged)}
+.caption b.purple{color:var(--commit)} .caption b.amber{color:var(--remote)}
+
+/* replay */
+.replay{
+  margin-top:4px; display:flex; align-items:center; gap:8px; padding:10px 20px; border-radius:999px;
+  background:rgba(255,255,255,.04); border:1px solid var(--line2); color:var(--txt);
+  font:inherit; font-size:.85rem; font-weight:500; cursor:pointer; transition:all .15s;
+  opacity:0; pointer-events:none;
+}
+.replay.show{opacity:1;pointer-events:auto}
+.replay:hover{border-color:var(--local);background:rgba(56,189,248,.1)}
+.replay svg{width:16px;height:16px}
+</style>
+</head>
+<body>
+
+  
+
+  <div class="title">
+    <h1>The journey of your code</h1>
+    <p>from a few unsaved lines &rarr; to the cloud</p>
+  </div>
+
+  <div class="modes" id="modes">
+    <button class="mode on" id="m-auto">&#9654;&ensp;Auto play</button>
+    <button class="mode" id="m-interactive">&#9000;&ensp;Try it yourself</button>
+  </div>
+
+  <div class="stage" id="stage">
+    <div class="netwrap">
+      <div class="netline" id="netline"></div>
+      <div class="netlabel" id="netlabel">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+        network
+      </div>
+    </div>
+
+    <!-- LOCAL -->
+    <section class="region local" id="r-local">
+      <span class="region-tag">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+        Local &mdash; your computer
+      </span>
+      <span class="region-sub">~/project</span>
+      <div class="zones">
+        <div class="zone wd" id="z-wd">
+          <div class="zone-head">Working dir</div>
+          <div class="zone-cmd">files you edit</div>
+          <div class="zone-body" id="b-wd"></div>
+          <button class="save-btn" id="save-btn">&#9000; Save &nbsp;<small>&#8984;S</small></button>
+        </div>
+        <div class="zone stg" id="z-stg">
+          <div class="zone-head">Staging area</div>
+          <div class="zone-cmd">git add</div>
+          <div class="zone-body" id="b-stg"></div>
+        </div>
+        <div class="zone repo" id="z-repo">
+          <div class="zone-head">Local repo</div>
+          <div class="zone-cmd">.git history</div>
+          <div class="zone-body" id="b-repo"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- REMOTE -->
+    <section class="region remote" id="r-remote">
+      <span class="region-tag">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.5 19a4.5 4.5 0 0 0 .5-8.97A6 6 0 1 0 6 13"/><path d="M8 17l4 4 4-4M12 12v9"/></svg>
+        Remote &mdash; cloud
+      </span>
+      <span class="region-sub">github.com</span>
+      <div class="zone repo" id="z-rrepo" style="height:100%">
+        <div class="zone-head">Remote repo</div>
+        <div class="zone-cmd">git push</div>
+        <div class="zone-body" id="b-rrepo"></div>
+      </div>
+    </section>
+
+    <div class="overlay" id="overlay"></div>
+  </div>
+
+  <div class="readout">
+    <div class="terminal">
+      <div class="term-bar"><i></i><i></i><i></i><span>bash</span></div>
+      <div class="term-body">
+        <span class="prompt">$</span><span class="cmd" id="cmd"></span><span class="cursor" id="cursor"></span><input class="cmd-input" id="cmd-input" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" disabled />
+      </div>
+    </div>
+    <div class="hint" id="hint"></div>
+    <div class="caption" id="caption"></div>
+    <button class="replay" id="replay">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>
+      Replay
+    </button>
+  </div>
+
+  <script>
+  const SPEED = 1;                       // bump >1 to go faster
+  const ms = (n) => n / SPEED;
+  const sleep = (n) => new Promise(r => setTimeout(r, ms(n)));
+  const $ = (id) => document.getElementById(id);
+
+  const overlay = $('overlay');
+
+  // svg snippets reused in cards
+  const ICON_FILE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>';
+  const ICON_DOT  = '<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="6"/></svg>';
+  const ICON_CHECK= '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6 9 17l-5-5"/></svg>';
+
+  // card builders -----------------------------------------------------------
+  const codeLines = `<div class="snippet"><span class="kw">const</span> <span class="fn">login</span> = () =&gt; {<br>&nbsp;&nbsp;<span class="fn">auth</span>(<span class="str">'user'</span>);<br>};</div>`;
+
+  function cardUnsaved(){
+    return `<div class="card unsaved">
+      <div class="fname">${ICON_FILE} app.js</div>${codeLines}
+      <span class="badge">${ICON_DOT} unsaved</span></div>`;
+  }
+  function cardFile(){
+    return `<div class="card file">
+      <div class="fname">${ICON_FILE} app.js</div>${codeLines}
+      <span class="badge">${ICON_CHECK} saved</span></div>`;
+  }
+  function cardStaged(){
+    return `<div class="card staged">
+      <div class="fname">${ICON_FILE} app.js</div>${codeLines}
+      <span class="badge">+ tracked</span></div>`;
+  }
+  function commitNode(remote, msg, hash){
+    return `<div class="commit${remote ? ' remote-dot':''}">
+      <div class="dot"></div>
+      <div class="hash">${hash || 'a1c9f2'}</div>
+      <div class="msg">"${esc(msg || 'add login form')}"</div></div>`;
+  }
+  const esc = (s) => String(s).replace(/[&<>"']/g, c => (
+    {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const randHash = () => Math.random().toString(16).slice(2, 8);
+
+  // geometry helpers --------------------------------------------------------
+  function centerIn(el){
+    const o = overlay.getBoundingClientRect();
+    const r = el.getBoundingClientRect();
+    return { x: r.left - o.left + r.width/2, y: r.top - o.top + r.height/2 };
+  }
+
+  // fly a built element from one anchor element to another
+  async function fly(fromEl, toEl, html, dur=900, arc=0){
+    const a = centerIn(fromEl), b = centerIn(toEl);
+    const g = document.createElement('div');
+    g.className = 'ghost';
+    g.innerHTML = html;
+    overlay.appendChild(g);
+    const midY = (a.y + b.y)/2 - arc;
+    const anim = g.animate([
+      { left:`${a.x}px`, top:`${a.y}px`, opacity:0, offset:0 },
+      { opacity:1, offset:.12 },
+      { left:`${(a.x+b.x)/2}px`, top:`${midY}px`, offset:.5 },
+      { opacity:1, offset:.88 },
+      { left:`${b.x}px`, top:`${b.y}px`, opacity:0, offset:1 }
+    ], { duration: ms(dur), easing:'cubic-bezier(.4,.05,.3,1)', fill:'forwards' });
+    // race the animation against a timer so we never hang if finished never settles
+    await Promise.race([ anim.finished.catch(()=>{}), sleep(dur + 60) ]);
+    g.remove();
+  }
+
+  // typewriter for the terminal
+  let typingToken = 0;
+  async function type(text){
+    const token = ++typingToken;
+    const el = $('cmd');
+    el.textContent = '';
+    for(const ch of text){
+      if(token !== typingToken) return;
+      el.textContent += ch;
+      await sleep(34);
+    }
+  }
+  function clearTerm(){ typingToken++; $('cmd').textContent=''; }
+
+  function say(text, tone=''){
+    const c = $('caption');
+    c.className = 'caption ' + tone;
+    c.innerHTML = text;
+  }
+
+  const hot = (el, on) => $(el).classList.toggle('hot', on);
+
+  // size the network line to the gap between local & remote
+  function layoutNet(){
+    const s = $('stage').getBoundingClientRect();
+    const l = $('r-local').getBoundingClientRect();
+    const r = $('r-remote').getBoundingClientRect();
+    const x1 = l.right - s.left, x2 = r.left - s.left;
+    const nl = $('netline');
+    nl.style.left = x1 + 'px';
+    nl.style.width = Math.max(0, x2 - x1) + 'px';
+    $('netlabel').style.left = ((x1 + x2) / 2) + 'px';
+  }
+  window.addEventListener('resize', layoutNet);
+
+  // ---------- state & mode ----------
+  let mode = 'auto';
+  let runToken = 0;            // cancels an in-flight auto sequence on reset/switch
+  let busy = false;           // an effect's animation is currently playing
+  let state;
+  const freshState = () => ({ saved:false, staged:false, committed:false, pushed:false, msg:'', hash:'' });
+
+  function lockInput(locked){
+    const inp = $('cmd-input');
+    inp.disabled = locked;
+    if(!locked && mode === 'interactive') inp.focus();
+  }
+
+  // ---------- shared scene pieces ----------
+  function resetScene(){
+    runToken++; busy = false; state = freshState();
+    ['b-wd','b-stg','b-repo','b-rrepo'].forEach(id => $(id).innerHTML='');
+    ['z-wd','z-stg','z-repo','z-rrepo','r-local','r-remote'].forEach(id => $(id).classList.remove('show','hot'));
+    $('netline').classList.remove('show'); $('netlabel').classList.remove('show');
+    $('replay').classList.remove('show');
+    $('save-btn').classList.remove('show');
+    $('hint').innerHTML = '';
+    $('cmd-input').value = ''; $('cmd-input').placeholder = '';
+    $('cursor').style.display = '';
+    overlay.innerHTML=''; clearTerm(); say('');
+    layoutNet();
+  }
+
+  // establish geography + reveal local categories (beats 1-2, identical in both modes)
+  async function setupGeography(token){
+    const alive = () => token === runToken;
+    say('Your code lives in <b>two</b> places.', 'cyan');
+    $('r-local').classList.add('show');
+    await sleep(900); if(!alive()) return false;
+    $('r-remote').classList.add('show'); $('z-rrepo').classList.add('show');
+    $('netline').classList.add('show'); $('netlabel').classList.add('show');
+    say('<b>Local</b> is your computer. <b class="amber">Remote</b> is the cloud (GitHub).', 'cyan');
+    await sleep(2100); if(!alive()) return false;
+    say('On your computer, code moves through <b>3 areas</b>.', 'cyan');
+    $('z-wd').classList.add('show');  await sleep(500); if(!alive()) return false;
+    $('z-stg').classList.add('show'); await sleep(500); if(!alive()) return false;
+    $('z-repo').classList.add('show');await sleep(1200); if(!alive()) return false;
+    // the unsaved snippet appears
+    hot('z-wd', true);
+    $('b-wd').innerHTML = cardUnsaved();
+    return true;
+  }
+
+  // ---------- effects (own the animation + caption, used by both modes) ----------
+  async function effectSave(){
+    busy = true;
+    $('b-wd').innerHTML = cardFile();
+    $('b-wd').firstElementChild.classList.add('spawn');
+    state.saved = true;
+    say('Hit save. Now it is a <b>real file</b> on disk.');
+    busy = false;
+  }
+  async function effectAdd(){
+    busy = true; hot('z-stg', true);
+    say('<b class="green">git add</b> hands the file to the staging area. Git now <b>tracks</b> it.', 'green');
+    await fly($('b-wd'), $('b-stg'), cardStaged(), 950, 50);
+    $('b-stg').innerHTML = cardStaged();
+    $('b-stg').firstElementChild.classList.add('spawn');
+    $('b-wd').firstElementChild.classList.add('dim');   // file still in WD, now tracked
+    hot('z-wd', false);
+    state.staged = true; busy = false;
+  }
+  async function effectCommit(msg){
+    busy = true; hot('z-repo', true); hot('z-stg', false);
+    state.msg = msg || 'add login form'; state.hash = randHash();
+    say('<b class="purple">git commit</b> saves a <b>snapshot</b> into your local history.', 'purple');
+    await fly($('b-stg'), $('b-repo'), commitNode(false, state.msg, state.hash), 950, 60);
+    $('b-repo').innerHTML = commitNode(false, state.msg, state.hash);
+    $('b-stg').innerHTML = '';                          // staging is now clean
+    state.committed = true; busy = false;
+  }
+  async function effectPush(){
+    busy = true; hot('z-repo', false);
+    say('<b class="amber">git push</b> sends that snapshot across the network &mdash; now it is <b>online</b>.', 'amber');
+    await fly($('b-repo'), $('b-rrepo'), commitNode(true, state.msg, state.hash), 1200, 90);
+    $('b-rrepo').innerHTML = commitNode(true, state.msg, state.hash);
+    $('b-rrepo').firstElementChild.classList.add('spawn');
+    state.pushed = true; busy = false;
+  }
+
+  function finish(){
+    clearTerm();
+    say('Local &harr; remote, in sync. <b>Teammates can now pull your work.</b>', 'amber');
+    $('cursor').style.display = 'none';
+    $('hint').innerHTML = ''; $('save-btn').classList.remove('show');
+    $('cmd-input').placeholder = ''; lockInput(true);
+    $('replay').classList.add('show');
+  }
+
+  // ---------- AUTO mode ----------
+  async function startAuto(){
+    resetScene();
+    const token = runToken;
+    const alive = () => token === runToken;
+    await sleep(400); if(!alive()) return;
+    if(!await setupGeography(token)) return;
+
+    await type('// just typing…'); if(!alive()) return;
+    say('You type a few lines. They only exist in memory &mdash; <b>nothing is saved yet</b>.');
+    await sleep(2300); if(!alive()) return;
+
+    clearTerm(); await type('⌘S  → app.js written'); if(!alive()) return;
+    await effectSave(); await sleep(2200); if(!alive()) return;
+
+    clearTerm(); await type('git add .'); if(!alive()) return;
+    await effectAdd(); await sleep(2200); if(!alive()) return;
+
+    clearTerm(); await type('git commit -m "add login form"'); if(!alive()) return;
+    await effectCommit('add login form'); await sleep(2400); if(!alive()) return;
+
+    clearTerm(); await type('git push origin main'); if(!alive()) return;
+    await effectPush(); await sleep(800); if(!alive()) return;
+
+    finish();
+  }
+
+  // ---------- INTERACTIVE mode ----------
+  const NEXT = {
+    save:   { hint: 'Your file is <b>unsaved</b>. Press <code>&#8984;S</code> (or click Save) to save it.', ph: 'press ⌘S to save the file…' },
+    add:    { hint: 'Saved! Tell git to track it &mdash; type <code>git add .</code>', ph: 'git add .' },
+    commit: { hint: 'Staged! Snapshot it &mdash; type <code>git commit -m "message"</code>', ph: 'git commit -m "add login form"' },
+    push:   { hint: 'Committed locally. Send it to the cloud &mdash; type <code>git push</code>', ph: 'git push origin main' },
+  };
+  function nextStep(){
+    if(!state.saved)     return 'save';
+    if(!state.staged)    return 'add';
+    if(!state.committed) return 'commit';
+    if(!state.pushed)    return 'push';
+    return null;
+  }
+  function hintNext(){
+    if(mode !== 'interactive') return;
+    const step = nextStep();
+    const inp = $('cmd-input');
+    if(!step){ $('hint').innerHTML=''; inp.placeholder=''; $('save-btn').classList.remove('show'); return; }
+    $('hint').innerHTML = NEXT[step].hint;
+    inp.placeholder = NEXT[step].ph;
+    $('save-btn').classList.toggle('show', step === 'save');
+  }
+
+  async function startInteractive(){
+    resetScene();
+    const token = runToken;
+    if(!await setupGeography(token)) return;
+    if(token !== runToken) return;
+    say('You typed a few lines &mdash; they only exist in memory. <b>Nothing is saved yet.</b>');
+    lockInput(false);
+    hintNext();
+  }
+
+  // run an effect from the user, guarding against bad order
+  async function attempt(kind, arg){
+    if(busy) return;
+    switch(kind){
+      case 'save':
+        if(state.saved) { say('Already saved &mdash; it is a real file now.'); break; }
+        await effectSave(); hintNext(); break;
+      case 'add':
+        if(!state.saved)  { say('Save the file first &mdash; press <code>&#8984;S</code>.', 'cyan'); break; }
+        if(state.staged)  { say('Already staged.', 'green'); break; }
+        await effectAdd(); hintNext(); break;
+      case 'commit':
+        if(!state.staged)    { say('Nothing staged yet &mdash; run <b class="green">git add .</b> first.', 'green'); break; }
+        if(state.committed)  { say('Already committed.', 'purple'); break; }
+        await effectCommit(arg); hintNext(); break;
+      case 'push':
+        if(!state.committed) { say('Nothing to push &mdash; <b class="purple">commit</b> something first.', 'purple'); break; }
+        if(state.pushed)     { say('Already pushed &mdash; local &harr; remote are in sync.', 'amber'); break; }
+        await effectPush();
+        if(state.pushed){ setTimeout(finish, ms(900)); }
+        break;
+    }
+  }
+
+  function parseMsg(t){
+    const m = t.match(/-m\s+("([^"]*)"|'([^']*)'|(\S+))/);
+    return m ? (m[2] ?? m[3] ?? m[4]) : 'update';
+  }
+  function processCommand(raw){
+    const t = raw.trim();
+    if(!t) return;
+    if(/^git\s+add(\s|$)/.test(t))         attempt('add');
+    else if(/^git\s+commit(\s|$)/.test(t)) attempt('commit', parseMsg(t));
+    else if(/^git\s+push(\s|$)/.test(t))   attempt('push');
+    else if(/^save$/i.test(t))             attempt('save');
+    else say('Unknown command. Try <code>git add .</code>, <code>git commit -m "&hellip;"</code>, or <code>git push</code>.', 'cyan');
+  }
+
+  // ---------- wiring ----------
+  function setMode(m){
+    if(m === mode && busy) return;
+    mode = m;
+    document.body.classList.toggle('interactive', m === 'interactive');
+    $('m-auto').classList.toggle('on', m === 'auto');
+    $('m-interactive').classList.toggle('on', m === 'interactive');
+    typingToken++;                     // stop any in-flight typewriter
+    if(m === 'auto') startAuto(); else startInteractive();
+  }
+
+  $('m-auto').addEventListener('click', () => setMode('auto'));
+  $('m-interactive').addEventListener('click', () => setMode('interactive'));
+  $('save-btn').addEventListener('click', () => attempt('save'));
+  $('cmd-input').addEventListener('keydown', (e) => {
+    if(e.key === 'Enter'){ const v = e.target.value; e.target.value = ''; processCommand(v); }
+  });
+  // ⌘S / Ctrl+S saves while in interactive mode
+  window.addEventListener('keydown', (e) => {
+    if((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 's' && mode === 'interactive'){
+      e.preventDefault(); attempt('save');
+    }
+  });
+  $('replay').addEventListener('click', () => setMode(mode));
+
+  window.addEventListener('load', () => setMode('auto'));
+  </script>
+</body>
+</html>

@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>3D Git Visualizer</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=Fira+Code:wght@500&display=swap" rel="stylesheet">
+    <style>
+        /* Specific styles for the 3D Canvas environment */
+        .showcase-wrapper {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            max-width: 800px;
+            width: 100%;
+            margin: 0 auto;
+        }
+
+        .canvas-frame {
+            position: relative;
+            width: 600px;
+            height: 450px;
+            background: radial-gradient(circle at center, #0f0f13 0%, #050507 100%);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 20px 45px rgba(0,0,0,0.8), inset 0 1px 0 rgba(255,255,255,0.05);
+        }
+
+        /* HTML Overlay Labels positioned over WebGL meshes */
+        .projected-label {
+            position: absolute;
+            transform: translate(-50%, -100%);
+            pointer-events: none;
+            font-family: 'Fira Code', monospace;
+            font-size: 11px;
+            font-weight: 600;
+            color: #fff;
+            background: rgba(0, 0, 0, 0.7);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 0px;
+            padding: 4px 8px;
+            white-space: nowrap;
+            box-shadow: 4px 4px 0px rgba(255,255,255,0.1);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            z-index: 6;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .projected-label.show {
+            opacity: 1;
+        }
+
+        .projected-label.file-label {
+            background: rgba(0, 0, 0, 0.8);
+            border-color: #0ea5e9;
+            box-shadow: 4px 4px 0px rgba(14, 165, 233, 0.3);
+            color: #0ea5e9;
+        }
+
+        .projected-label.commit-label {
+            background: rgba(0, 0, 0, 0.9);
+            border-color: #d9f99d;
+            box-shadow: 4px 4px 0px rgba(217, 249, 157, 0.3);
+            color: #d9f99d;
+            font-size: 10px;
+        }
+
+        .projected-label.commit-label.feature-label {
+            border-color: #f472b6;
+            box-shadow: 4px 4px 0px rgba(244, 114, 182, 0.3);
+            color: #f472b6;
+        }
+
+        .projected-label.branch-tag-label {
+            font-size: 9px;
+            text-transform: uppercase;
+            padding: 2px 6px;
+            border-radius: 0px;
+            font-weight: bold;
+            color: #000;
+            background: #d9f99d;
+            border-color: #000;
+            box-shadow: 2px 2px 0px #000;
+        }
+
+        .projected-label.branch-tag-label.feature-branch {
+            background: #f472b6;
+            color: #000;
+            border-color: #000;
+        }
+
+        .projected-label.head-label {
+            background: #fff;
+            color: #000;
+            border-color: #000;
+            font-size: 10px;
+            font-weight: bold;
+            padding: 2px 6px;
+            box-shadow: 2px 2px 0px #000;
+            border-radius: 0px;
+        }
+
+        /* Terminal Overlay Popup inside Frame */
+        .frame-terminal {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%) scale(0.9);
+            border-radius: 0px;
+            background: #000;
+            border: 1px solid #d9f99d;
+            box-shadow: 6px 6px 0px rgba(217, 249, 157, 0.3);
+            padding: 10px 18px;
+            color: #fff;
+            font-family: 'Fira Code', monospace;
+            font-size: 13px;
+            z-index: 10;
+            opacity: 0;
+            pointer-events: none;
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            display: flex;
+            align-items: center;
+        }
+
+        .frame-terminal.show {
+            opacity: 1;
+            transform: translateX(-50%) scale(1);
+        }
+
+        .frame-terminal .prompt {
+            color: #4ade80;
+            margin-right: 8px;
+        }
+        
+        /* Brutalist Button Overrides for 3D page */
+        .reset-btn {
+            border-radius: 0px !important;
+            border: 1px solid #fff !important;
+            background: #000 !important;
+            color: #fff !important;
+            font-family: 'Fira Code', monospace !important;
+            text-transform: uppercase;
+            box-shadow: 3px 3px 0px rgba(255,255,255,0.2) !important;
+            transition: all 0.2s;
+        }
+        .reset-btn:hover:not(:disabled) {
+            transform: translate(-2px, -2px);
+            box-shadow: 5px 5px 0px rgba(255,255,255,0.4) !important;
+            background: #fff !important;
+            color: #000 !important;
+        }
+        .reset-btn:disabled {
+            border-color: #333 !important;
+            color: #555 !important;
+            box-shadow: none !important;
+        }
+    </style>
+</head>
+<body>
+    <div class="noise-overlay"></div>
+    
+
+    <div class="showcase-wrapper">
+        <!-- The Fixed 600px width Canvas Frame -->
+        <div class="canvas-frame">
+            <!-- WebGL Container -->
+            <div id="canvas-container" style="width: 100%; height: 100%; position: absolute; top:0; left:0; z-index:1;"></div>
+
+            <!-- Legible HTML Labels Overlay Layer -->
+            <div id="labels-container" style="width: 100%; height: 100%; position: absolute; top:0; left:0; pointer-events: none; z-index: 5;"></div>
+
+            <!-- Command Terminal overlay -->
+            <div class="frame-terminal" id="terminal-popup">
+                <span class="prompt">$</span> <span id="terminal-text"></span>
+            </div>
+        </div>
+
+        <!-- Stepper / Switcher Dashboard -->
+        <div class="bottom-controls" style="margin-top: 16px; width: 600px; display: flex; justify-content: space-between; align-items: center; gap: 10px; z-index: 20;">
+            <button id="btn-replay" class="reset-btn" style="padding: 10px 20px; font-size: 13px; font-weight:600; display:flex; align-items:center; gap:8px;" disabled>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M8 5v14l11-7z"/>
+                </svg>
+                Replay 3D Sequence
+            </button>
+            <div style="display: flex; gap: 10px;">
+                <button id="btn-toggle-style" class="reset-btn" style="padding: 10px 20px; font-size: 13px; font-weight:600; border-color: #d97706; color: #f59e0b;">
+                    Style: Studio Slate
+                </button>
+                <button id="btn-reset-cam" class="reset-btn" style="padding: 10px 20px; font-size: 13px; font-weight:600;">
+                    Reset Cam
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Load Three.js and OrbitControls libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    
+    <!-- Load custom 3D script -->
+    <script src="3d.js"></script>
+</body>
+</html>

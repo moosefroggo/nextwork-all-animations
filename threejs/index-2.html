@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Git Command-Line Theater — Interactive 3D Tutorial</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;700&family=Inter:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+    <script type="module" crossorigin src="../assets/index-CU9H0FGT.js"></script>
+  </head>
+  <body>
+    <div id="dashboard-container">
+      <!-- Sidebar Control Panel -->
+      <aside id="sidebar">
+        <header id="sidebar-header">
+          <div class="logo-area">
+            <span class="logo-badge">NextWork</span>
+            <h1>Git Fundamentals</h1>
+          </div>
+          <p class="subtitle">Sequential 3D Workflow Simulator</p>
+        </header>
+
+        <!-- Progress Tracking -->
+        <div id="progress-wrapper">
+          <div class="progress-info">
+            <span id="step-counter">Step 1 of 11</span>
+            <span id="step-percentage">9%</span>
+          </div>
+          <div class="progress-bar-bg">
+            <div id="progress-bar-fill"></div>
+          </div>
+        </div>
+
+        <!-- Explanation Card -->
+        <section id="explanation-card">
+          <h2 id="step-title">Git Identity Configuration</h2>
+          <div id="step-description">
+            Git requires your name and email so that your commits are stamped with your identity. This is a global configuration.
+          </div>
+          <div id="step-task-box">
+            <strong>Active task:</strong>
+            <span id="step-task-text">Running global config variables to set developer identity.</span>
+          </div>
+        </section>
+
+        <!-- Terminal Window -->
+        <section id="terminal-window">
+          <div class="terminal-header">
+            <div class="terminal-dots">
+              <span class="dot red"></span>
+              <span class="dot yellow"></span>
+              <span class="dot green"></span>
+            </div>
+            <span class="terminal-title">git-learning-log — bash</span>
+          </div>
+          <div id="terminal-body">
+            <div id="terminal-history"></div>
+            <div class="terminal-current-line">
+              <span class="terminal-prompt">mustafa@macbook ~ %</span>
+              <span id="terminal-command-input"></span><span class="terminal-cursor">█</span>
+            </div>
+          </div>
+        </section>
+
+        <!-- Controls -->
+        <section id="controls-section">
+          <div class="controls-row">
+            <button id="prev-btn" class="ctrl-btn" title="Previous step">
+              <svg viewBox="0 0 24 24" class="icon"><path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg>
+              <span>Prev</span>
+            </button>
+            <button id="play-btn" class="ctrl-btn active" title="Toggle Auto-Play">
+              <svg id="play-icon" viewBox="0 0 24 24" class="icon" style="display:none;"><path d="M8 5v14l11-7z"/></svg>
+              <svg id="pause-icon" viewBox="0 0 24 24" class="icon"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+              <span id="play-btn-text">Pause</span>
+            </button>
+            <button id="next-btn" class="ctrl-btn" title="Next step">
+              <span>Next</span>
+              <svg viewBox="0 0 24 24" class="icon"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg>
+            </button>
+          </div>
+
+          <div class="navigation-dropdown-row">
+            <label for="step-select">Jump to command:</label>
+            <select id="step-select">
+              <!-- Dynamically populated options -->
+            </select>
+          </div>
+        </section>
+      </aside>
+
+      <!-- Three.js Canvas Container -->
+      <main id="canvas-container">
+        <!-- Floating mode toggle button -->
+        <button id="mode-toggle-btn" class="floating-btn" title="Toggle Presentation / Full-screen Mode">
+          <svg viewBox="0 0 24 24" class="icon"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V5h14v14zM7 10h2v2H7v-2zm4 0h2v2h-2v-2zm4 0h2v2h-2v-2z"/></svg>
+          <span id="mode-toggle-text">Presentation Mode</span>
+        </button>
+        <!-- The CSS2D elements and main Three.js WebGL canvas will be placed here -->
+      </main>
+    </div>
+
+    <!-- Mark the script entry point -->
+  </body>
+</html>

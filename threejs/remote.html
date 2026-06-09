@@ -1,0 +1,701 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Local vs Remote — Nextwork</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0e1016; --bg2:#11141d;
+  --panel:#161a25; --panel2:#1b2030;
+  --line:rgba(255,255,255,.08); --line2:rgba(255,255,255,.16);
+  --txt:#e7eaf2; --muted:#8a93a8; --faint:#5b6477;
+  --main:#a78bfa; --feat:#34d399; --merge:#fbbf24; --r:14px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{
+  background:
+    radial-gradient(900px 500px at 20% -10%, rgba(167,139,250,.09), transparent 55%),
+    radial-gradient(700px 400px at 85% -8%,  rgba(52,211,153,.08), transparent 55%),
+    var(--bg);
+  color:var(--txt); font-family:'Inter',system-ui,sans-serif;
+  min-height:100vh; display:flex; flex-direction:column; align-items:center;
+  padding:72px 20px 48px; gap:20px;
+}
+
+/* nav */
+.page-switch{
+  position:fixed; top:14px; left:50%; transform:translateX(-50%);
+  z-index:100; display:flex; gap:4px;
+  background:rgba(22,26,37,.85); backdrop-filter:blur(10px);
+  border:1px solid var(--line2); border-radius:999px; padding:4px;
+}
+.page-switch a{
+  text-decoration:none; color:var(--muted); font-size:.8rem; font-weight:500;
+  padding:6px 15px; border-radius:999px; transition:all .15s;
+}
+.page-switch a:hover{background:rgba(255,255,255,.06); color:var(--txt)}
+.page-switch a.active{background:rgba(167,139,250,.16); color:var(--main)}
+
+/* title */
+.title{text-align:center}
+.title h1{font-size:1.28rem;font-weight:700;letter-spacing:-.01em}
+.title p{font-size:.86rem;color:var(--muted);margin-top:4px}
+
+/* ── STAGE ── */
+.stage{
+  width:100%; max-width:1100px; min-height:220px;
+  background:rgba(255,255,255,.012); border:1px solid var(--line);
+  border-radius:var(--r);
+  display:flex; align-items:stretch; overflow:hidden;
+}
+
+/* ── LOCAL / REMOTE SIDES ── */
+.local-side{
+  flex:1; display:flex; flex-direction:column; min-width:0;
+  border-right:1px solid var(--line);
+}
+.remote-side{
+  flex:1; display:flex; flex-direction:column; min-width:0;
+  opacity:.3; transition:opacity .7s;
+}
+.remote-side.connected{ opacity:1; }
+
+.side-header{
+  padding:8px 14px; border-bottom:1px solid var(--line);
+  display:flex; align-items:center; gap:7px;
+  background:rgba(0,0,0,.18); flex-shrink:0;
+}
+.side-header svg.icon{ width:13px;height:13px;flex-shrink:0; }
+.side-label{
+  font-size:.63rem; font-weight:700; text-transform:uppercase;
+  letter-spacing:.07em; flex-shrink:0;
+}
+.side-sub{
+  font-size:.63rem; color:var(--faint);
+  font-family:'JetBrains Mono',monospace;
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+.local-header .side-label{ color:var(--main); }
+.remote-header .side-label{ color:var(--muted); }
+
+.side-body{ flex:1; display:flex; align-items:stretch; }
+
+/* ── FILE EXPLORER ── */
+.explorer{
+  flex:0 0 162px; border-right:1px solid var(--line);
+  background:rgba(0,0,0,.18); display:flex; flex-direction:column;
+}
+.exp-header{
+  padding:9px 14px; border-bottom:1px solid var(--line);
+  font-size:.62rem; font-weight:700; letter-spacing:.08em;
+  text-transform:uppercase; color:var(--faint);
+}
+.exp-body{ padding:10px 0; flex:1; }
+.exp-folder{
+  display:flex; align-items:center; gap:6px;
+  padding:4px 14px; font-family:'JetBrains Mono',monospace;
+  font-size:.68rem; font-weight:600; color:var(--txt);
+}
+.exp-folder svg{ width:13px;height:13px;flex-shrink:0;color:#fbbf24 }
+.exp-file{
+  display:flex; align-items:center; gap:6px;
+  padding:4px 14px 4px 28px; font-family:'JetBrains Mono',monospace;
+  font-size:.67rem; color:var(--muted);
+  opacity:0; transform:translateX(-6px);
+  transition:opacity .4s ease, transform .4s ease;
+}
+.exp-file.show{ opacity:1; transform:none; }
+.exp-file svg{ width:11px;height:11px;flex-shrink:0; }
+.exp-file.git-folder{ color:var(--faint); font-style:italic; }
+.exp-file.git-folder svg{ color:var(--faint); }
+.exp-file.tracked{ color:var(--txt); }
+.exp-file.tracked svg{ color:#7dd3fc; }
+.exp-file.incoming{ color:var(--feat); }
+.exp-file.incoming svg{ color:var(--feat); }
+
+/* ── GRAPH PANELS ── */
+.graph-panel{ flex:1; padding:18px 14px 12px; min-width:0; }
+#local-svg{ width:100%; overflow:visible; display:block; height:130px; }
+
+.remote-graph{
+  flex:1; position:relative; padding:18px 14px 12px; min-width:0;
+  display:flex; flex-direction:column;
+}
+#remote-svg{ width:100%; overflow:visible; display:block; height:130px; }
+.remote-empty{
+  position:absolute; inset:0;
+  display:flex; align-items:center; justify-content:center;
+  font-size:.73rem; color:var(--faint);
+  transition:opacity .5s; pointer-events:none;
+}
+
+/* ── BRIDGE ── */
+.bridge{
+  flex:0 0 92px;
+  display:flex; flex-direction:column;
+  align-items:center; justify-content:center;
+  gap:24px; position:relative;
+  background:rgba(0,0,0,.14);
+  border-left:1px solid var(--line);
+  border-right:1px solid var(--line);
+  overflow:hidden;
+}
+.bridge-lbl{
+  display:flex; align-items:center; gap:5px;
+  font-size:.61rem; font-weight:600; letter-spacing:.03em;
+  color:var(--faint); transition:color .4s;
+  z-index:1; pointer-events:none;
+}
+.bridge-lbl svg{ width:11px;height:11px; }
+.bridge-lbl.lit{ color:var(--main); }
+.bridge-lbl.lit-pull{ color:var(--feat); }
+
+/* animated commit packets */
+.packet{
+  position:absolute;
+  width:8px; height:8px; border-radius:50%;
+  top:50%; margin-top:-4px;
+  pointer-events:none;
+}
+
+/* ── TERMINAL ── */
+.terminal{
+  width:100%; max-width:620px; background:#0a0c12;
+  border:1px solid var(--line2); border-radius:12px; overflow:hidden;
+}
+.term-bar{
+  display:flex;align-items:center;gap:6px;
+  padding:8px 12px;background:rgba(255,255,255,.03);border-bottom:1px solid var(--line);
+}
+.term-bar i{width:10px;height:10px;border-radius:50%;display:inline-block}
+.term-bar i:nth-child(1){background:#ff5f56}
+.term-bar i:nth-child(2){background:#ffbd2e}
+.term-bar i:nth-child(3){background:#27c93f}
+.term-bar .term-path{
+  margin-left:8px;font-size:.62rem;color:var(--faint);font-family:'JetBrains Mono',monospace;
+}
+.term-bar .branch-indicator{ color:var(--main); }
+.term-body{
+  padding:12px 14px;min-height:40px;
+  font-family:'JetBrains Mono',monospace;font-size:.82rem;
+  display:flex;align-items:center;
+}
+.term-body .prompt{color:var(--feat);margin-right:8px;flex-shrink:0}
+.term-body .cmd{color:var(--txt)}
+.term-body .cursor{
+  display:inline-block;width:8px;height:1.05em;
+  vertical-align:-2px;background:var(--txt);margin-left:2px;
+  animation:blink 1s step-end infinite;
+}
+@keyframes blink{50%{opacity:0}}
+
+/* ── READOUT ── */
+.readout{width:100%;max-width:1100px;display:flex;flex-direction:column;gap:10px;align-items:center}
+.caption{
+  text-align:center;font-size:1rem;font-weight:500;color:var(--txt);
+  min-height:1.5em;max-width:740px; line-height:1.6;
+}
+.caption b{font-weight:700}
+.caption b.p{color:var(--main)}
+.caption b.g{color:var(--feat)}
+.caption b.y{color:var(--merge)}
+.caption code{
+  font-family:'JetBrains Mono',monospace; font-size:.82em;
+  background:rgba(255,255,255,.07); padding:1px 6px; border-radius:4px;
+  color:var(--txt);
+}
+
+.replay{
+  display:flex;align-items:center;gap:8px;padding:10px 20px;border-radius:999px;
+  background:rgba(255,255,255,.04);border:1px solid var(--line2);color:var(--txt);
+  font:inherit;font-size:.85rem;font-weight:500;cursor:pointer;transition:all .15s;
+  opacity:0;pointer-events:none;
+}
+.replay.show{opacity:1;pointer-events:auto}
+.replay:hover{border-color:var(--main);background:rgba(167,139,250,.1)}
+.replay svg{width:15px;height:15px}
+</style>
+</head>
+<body>
+
+
+
+<div class="title">
+  <h1>Local vs Remote</h1>
+  <p>how your machine talks to GitHub</p>
+</div>
+
+<div class="stage">
+
+  <!-- ── LOCAL SIDE ── -->
+  <div class="local-side">
+    <div class="side-header local-header">
+      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <rect x="2" y="3" width="20" height="14" rx="2"/>
+        <path d="M8 21h8M12 17v4"/>
+      </svg>
+      <span class="side-label">Local</span>
+      <span class="side-sub">your machine</span>
+    </div>
+    <div class="side-body">
+
+      <!-- FILE EXPLORER -->
+      <div class="explorer">
+        <div class="exp-header">Explorer</div>
+        <div class="exp-body">
+          <div class="exp-folder">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M10 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/></svg>
+            my-project
+          </div>
+          <div id="exp-files">
+            <div class="exp-file git-folder show">
+              <svg viewBox="0 0 24 24" fill="currentColor"><path d="M10 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/></svg>
+              .git/
+            </div>
+            <div class="exp-file tracked show">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>
+              app.js
+            </div>
+            <div class="exp-file tracked show">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>
+              styles.css
+            </div>
+            <div class="exp-file tracked show">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>
+              login.js
+            </div>
+            <div class="exp-file incoming" id="ef-navbar" style="opacity:0;transform:translateX(-6px)">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>
+              navbar.js
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- LOCAL GRAPH -->
+      <div class="graph-panel">
+        <svg id="local-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 130" preserveAspectRatio="xMidYMid meet">
+          <defs>
+            <filter id="lgf-main" x="-100%" y="-100%" width="300%" height="300%">
+              <feGaussianBlur stdDeviation="4" result="b"/>
+              <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+            </filter>
+            <filter id="lgf-feat" x="-100%" y="-100%" width="300%" height="300%">
+              <feGaussianBlur stdDeviation="4" result="b"/>
+              <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+            </filter>
+          </defs>
+
+          <!-- lines -->
+          <path id="ll-main" fill="none" stroke="rgba(167,139,250,.45)" stroke-width="2.5" stroke-linecap="round" d="M 10 65 L 230 65"/>
+          <path id="ll-ext"  fill="none" stroke="rgba(52,211,153,.45)"  stroke-width="2.5" stroke-linecap="round" d=""/>
+
+          <!-- c0, c1, c2 already committed; c3 hidden until pull -->
+          <circle id="lc0" cx="60"  cy="65" r="9" fill="#a78bfa" stroke="rgba(167,139,250,.7)" stroke-width="2" filter="url(#lgf-main)"/>
+          <circle id="lc1" cx="145" cy="65" r="9" fill="#a78bfa" stroke="rgba(167,139,250,.7)" stroke-width="2" filter="url(#lgf-main)"/>
+          <circle id="lc2" cx="230" cy="65" r="9" fill="#a78bfa" stroke="rgba(167,139,250,.7)" stroke-width="2" filter="url(#lgf-main)"/>
+          <circle id="lc3" cx="310" cy="65" r="0" fill="#34d399" stroke="rgba(52,211,153,.7)"  stroke-width="2" filter="url(#lgf-feat)"/>
+
+          <!-- labels -->
+          <text x="60"  y="83" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="8.5" fill="#5b6477">first commit</text>
+          <text x="145" y="83" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="8.5" fill="#5b6477">add styles</text>
+          <text x="230" y="83" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="8.5" fill="#5b6477">add login</text>
+          <text id="llbl-c3" x="310" y="83" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="8.5" fill="#5b6477" opacity="0">add navbar</text>
+
+          <!-- main pill -->
+          <g>
+            <rect x="6" y="47" width="42" height="15" rx="7.5" fill="rgba(167,139,250,.15)" stroke="rgba(167,139,250,.4)" stroke-width="1"/>
+            <text x="27" y="58.5" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="8.5" font-weight="700" fill="#a78bfa">main</text>
+          </g>
+
+          <!-- HEAD indicator, starts at c2 -->
+          <g id="lhead-group">
+            <line id="lhead-line" x1="230" y1="51" x2="230" y2="57" stroke="rgba(253,230,138,.8)" stroke-width="1.5"/>
+            <text id="lhead-text" x="230" y="47" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="9.5" font-weight="700" fill="#fde68a">HEAD</text>
+          </g>
+
+          <!-- origin/main tracking pill (hidden until push) -->
+          <g id="lorigin-pill" opacity="0">
+            <rect id="lorigin-rect" x="191" y="89" width="78" height="15" rx="7.5" fill="rgba(100,80,200,.12)" stroke="rgba(167,139,250,.22)" stroke-width="1"/>
+            <text id="lorigin-text" x="230" y="100.5" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="7.5" fill="#8b5cf6">origin/main</text>
+          </g>
+        </svg>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── BRIDGE ── -->
+  <div class="bridge" id="bridge">
+    <div class="bridge-lbl" id="lbl-push">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+      push
+    </div>
+    <div class="bridge-lbl" id="lbl-pull">
+      pull
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+    </div>
+  </div>
+
+  <!-- ── REMOTE SIDE ── -->
+  <div class="remote-side" id="remote-side">
+    <div class="side-header remote-header">
+      <svg class="icon" viewBox="0 0 24 24" fill="currentColor" style="color:var(--muted)">
+        <path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0 1 12 6.844a9.59 9.59 0 0 1 2.504.337c1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.02 10.02 0 0 0 22 12.017C22 6.484 17.522 2 12 2z"/>
+      </svg>
+      <span class="side-label">Remote</span>
+      <span class="side-sub" id="remote-url">not connected</span>
+    </div>
+    <div class="remote-graph">
+      <div class="remote-empty" id="remote-empty" style="opacity:1">No commits pushed yet</div>
+      <svg id="remote-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 130" preserveAspectRatio="xMidYMid meet">
+        <defs>
+          <filter id="rgf-main" x="-100%" y="-100%" width="300%" height="300%">
+            <feGaussianBlur stdDeviation="4" result="b"/>
+            <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+          </filter>
+          <filter id="rgf-feat" x="-100%" y="-100%" width="300%" height="300%">
+            <feGaussianBlur stdDeviation="4" result="b"/>
+            <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+          </filter>
+        </defs>
+
+        <!-- lines -->
+        <path id="rl-main" fill="none" stroke="rgba(167,139,250,.45)" stroke-width="2.5" stroke-linecap="round" d=""/>
+        <path id="rl-ext"  fill="none" stroke="rgba(52,211,153,.45)"  stroke-width="2.5" stroke-linecap="round" d=""/>
+
+        <!-- all commits hidden initially -->
+        <circle id="rc0" cx="65"  cy="65" r="0" fill="#a78bfa" stroke="rgba(167,139,250,.7)" stroke-width="2" filter="url(#rgf-main)"/>
+        <circle id="rc1" cx="170" cy="65" r="0" fill="#a78bfa" stroke="rgba(167,139,250,.7)" stroke-width="2" filter="url(#rgf-main)"/>
+        <circle id="rc2" cx="275" cy="65" r="0" fill="#a78bfa" stroke="rgba(167,139,250,.7)" stroke-width="2" filter="url(#rgf-main)"/>
+        <circle id="rc3" cx="380" cy="65" r="0" fill="#34d399" stroke="rgba(52,211,153,.7)"  stroke-width="2" filter="url(#rgf-feat)"/>
+
+        <!-- labels -->
+        <text id="rlbl-c0" x="65"  y="83" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="8.5" fill="#5b6477" opacity="0">first commit</text>
+        <text id="rlbl-c1" x="170" y="83" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="8.5" fill="#5b6477" opacity="0">add styles</text>
+        <text id="rlbl-c2" x="275" y="83" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="8.5" fill="#5b6477" opacity="0">add login</text>
+        <text id="rlbl-c3" x="380" y="83" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="8.5" fill="#5b6477" opacity="0">add navbar</text>
+
+        <!-- main pill -->
+        <g id="rpill-main" opacity="0" style="transition:opacity .5s">
+          <rect x="6" y="47" width="42" height="15" rx="7.5" fill="rgba(167,139,250,.15)" stroke="rgba(167,139,250,.4)" stroke-width="1"/>
+          <text x="27" y="58.5" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="8.5" font-weight="700" fill="#a78bfa">main</text>
+        </g>
+
+        <!-- teammate badge -->
+        <g id="rpill-teammate" opacity="0" style="transition:opacity .5s">
+          <rect x="330" y="47" width="82" height="15" rx="7.5" fill="rgba(52,211,153,.1)" stroke="rgba(52,211,153,.3)" stroke-width="1"/>
+          <text x="371" y="58.5" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="7.5" font-weight="600" fill="#34d399">teammate</text>
+        </g>
+      </svg>
+    </div>
+  </div>
+
+</div>
+
+<!-- ── TERMINAL + CAPTION ── -->
+<div class="readout">
+  <div class="terminal">
+    <div class="term-bar">
+      <i></i><i></i><i></i>
+      <span class="term-path" id="term-path">~/my-project <span class="branch-indicator">(main)</span></span>
+    </div>
+    <div class="term-body">
+      <span class="prompt">$</span>
+      <span class="cmd" id="cmd"></span>
+      <span class="cursor" id="cursor"></span>
+    </div>
+  </div>
+  <div class="caption" id="caption"></div>
+  <button class="replay" id="replay">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>
+    Replay
+  </button>
+</div>
+
+<script>
+const SPEED = 1;
+const ms    = n => n / SPEED;
+const sleep = n => new Promise(r => setTimeout(r, ms(n)));
+const $     = id => document.getElementById(id);
+
+// ── Terminal ──────────────────────────────────────────────────────────────────
+let typeToken = 0;
+async function type(text){
+  const tok = ++typeToken;
+  $('cmd').textContent = '';
+  for(const ch of text){
+    if(tok !== typeToken) return;
+    $('cmd').textContent += ch;
+    await sleep(38);
+  }
+}
+function clearTerm(){ typeToken++; $('cmd').textContent = ''; }
+function say(html){ $('caption').innerHTML = html; }
+
+// ── SVG node pop ──────────────────────────────────────────────────────────────
+function popNode(id, targetR=9){
+  return new Promise(resolve => {
+    const el = $(id);
+    const dur = ms(380);
+    const t0  = performance.now();
+    function tick(now){
+      const raw = Math.max(0, Math.min((now - t0) / dur, 1));
+      const r   = raw < 0.55
+        ? (raw / 0.55) * (targetR + 4)
+        : (targetR + 4) - ((raw - 0.55) / 0.45) * 4;
+      el.setAttribute('r', r);
+      if(raw < 1) requestAnimationFrame(tick);
+      else { el.setAttribute('r', String(targetR)); resolve(); }
+    }
+    requestAnimationFrame(tick);
+  });
+}
+
+// ── SVG path draw ─────────────────────────────────────────────────────────────
+function drawPath(id, d, dur=500){
+  const el = $(id);
+  el.setAttribute('d', d);
+  const len = el.getTotalLength ? el.getTotalLength() : 300;
+  el.style.strokeDasharray  = len;
+  el.style.strokeDashoffset = len;
+  el.style.transition = 'none';
+  void el.offsetWidth;
+  el.style.transition = `stroke-dashoffset ${ms(dur)}ms ease`;
+  el.style.strokeDashoffset = '0';
+  return sleep(dur);
+}
+
+// ── Fade SVG element ──────────────────────────────────────────────────────────
+function fadeEl(id, on=true){
+  const el = $(id);
+  el.style.transition = 'opacity .45s';
+  el.style.opacity = on ? '1' : '0';
+}
+
+// ── Move HEAD indicator ───────────────────────────────────────────────────────
+function moveHead(cx, cy){
+  return new Promise(resolve => {
+    const hl = $('lhead-line');
+    const ht = $('lhead-text');
+    const x0 = parseFloat(hl.getAttribute('x1') || cx);
+    const dur = ms(350);
+    const t0  = performance.now();
+    function tick(now){
+      const raw = Math.min((now - t0) / dur, 1);
+      const t   = raw < 0.5 ? 2*raw*raw : -1+(4-2*raw)*raw;
+      const x   = x0 + (cx - x0) * t;
+      hl.setAttribute('x1', x); hl.setAttribute('x2', x);
+      hl.setAttribute('y1', cy - 14); hl.setAttribute('y2', cy - 8);
+      ht.setAttribute('x', x); ht.setAttribute('y', cy - 18);
+      if(raw < 1) requestAnimationFrame(tick);
+      else resolve();
+    }
+    requestAnimationFrame(tick);
+  });
+}
+
+// ── Move origin/main pill ─────────────────────────────────────────────────────
+function moveOriginPill(targetCx){
+  return new Promise(resolve => {
+    const rect = $('lorigin-rect');
+    const text = $('lorigin-text');
+    const rectW = 78;
+    const x0 = parseFloat(rect.getAttribute('x'));
+    const xTarget = targetCx - rectW / 2;
+    const dur = ms(420);
+    const t0  = performance.now();
+    function tick(now){
+      const raw = Math.min((now - t0) / dur, 1);
+      const t   = raw < 0.5 ? 2*raw*raw : -1+(4-2*raw)*raw;
+      const x   = x0 + (xTarget - x0) * t;
+      rect.setAttribute('x', x);
+      text.setAttribute('x', x + rectW / 2);
+      if(raw < 1) requestAnimationFrame(tick);
+      else resolve();
+    }
+    requestAnimationFrame(tick);
+  });
+}
+
+// ── Packet animation across bridge ───────────────────────────────────────────
+async function sendPackets(dir, count, color){
+  const bridge = $('bridge');
+  const stagger = 155;
+  for(let i = 0; i < count; i++){
+    if(i > 0) await sleep(stagger);
+    const dot = document.createElement('div');
+    dot.className = 'packet';
+    dot.style.cssText = `background:${color};box-shadow:0 0 7px ${color};`;
+    dot.style.left = dir === 'push' ? '4px' : 'calc(100% - 12px)';
+    bridge.appendChild(dot);
+    void dot.offsetWidth;
+    dot.style.transition = 'left 640ms ease-in-out';
+    dot.style.left = dir === 'push' ? 'calc(100% - 12px)' : '4px';
+    setTimeout(() => {
+      dot.style.transition += ', opacity 200ms';
+      dot.style.opacity = '0';
+      setTimeout(() => dot.remove(), 240);
+    }, 680);
+  }
+  await sleep(stagger * (count - 1) + 700);
+}
+
+// ── RESET ─────────────────────────────────────────────────────────────────────
+function reset(){
+  // local graph: restore ll-main, clear ll-ext
+  const llMain = $('ll-main');
+  llMain.setAttribute('d', 'M 10 65 L 230 65');
+  llMain.style.strokeDasharray = 'none';
+  llMain.style.strokeDashoffset = '0';
+  llMain.style.transition = 'none';
+
+  const llExt = $('ll-ext');
+  llExt.setAttribute('d', '');
+  llExt.style.strokeDashoffset = '1000';
+  llExt.style.transition = 'none';
+
+  // remote paths
+  ['rl-main','rl-ext'].forEach(id => {
+    const e = $(id);
+    e.setAttribute('d', '');
+    e.style.strokeDashoffset = '1000';
+    e.style.transition = 'none';
+  });
+
+  // local c3 hidden, local c0-c2 stay visible
+  $('lc3').setAttribute('r', '0');
+  ['llbl-c3'].forEach(id => $(id).style.opacity = '0');
+
+  // remote nodes hidden
+  ['rc0','rc1','rc2','rc3'].forEach(id => $(id).setAttribute('r', '0'));
+  ['rlbl-c0','rlbl-c1','rlbl-c2','rlbl-c3'].forEach(id => $(id).style.opacity = '0');
+
+  // reset HEAD to c2
+  $('lhead-line').setAttribute('x1', '230'); $('lhead-line').setAttribute('x2', '230');
+  $('lhead-line').setAttribute('y1', '51');  $('lhead-line').setAttribute('y2', '57');
+  $('lhead-text').setAttribute('x', '230');  $('lhead-text').setAttribute('y', '47');
+
+  // reset origin pill
+  $('lorigin-rect').setAttribute('x', '191');
+  $('lorigin-text').setAttribute('x', '230');
+  $('lorigin-pill').style.transition = 'none';
+  $('lorigin-pill').style.opacity = '0';
+
+  // remote side
+  $('remote-side').classList.remove('connected');
+  $('remote-url').textContent = 'not connected';
+  $('remote-empty').style.opacity = '1';
+  ['rpill-main','rpill-teammate'].forEach(id => {
+    $(id).style.transition = 'none'; $(id).style.opacity = '0';
+  });
+
+  // bridge
+  $('lbl-push').classList.remove('lit');
+  $('lbl-pull').classList.remove('lit-pull');
+
+  // file explorer
+  const ef = $('ef-navbar');
+  ef.style.opacity = '0'; ef.style.transform = 'translateX(-6px)';
+
+  $('replay').classList.remove('show');
+  $('cursor').style.display = '';
+}
+
+// ── MAIN SEQUENCE ─────────────────────────────────────────────────────────────
+async function run(){
+  reset();
+  clearTerm(); say('');
+  await sleep(500);
+
+  // ── 1. Show local state ───────────────────────────────────────────────────
+  say('You\'ve been building locally. Three commits on <b class="p">main</b> — your machine has the full history, but GitHub doesn\'t know you exist yet.');
+  await sleep(3400);
+
+  // ── 2. git remote add ─────────────────────────────────────────────────────
+  clearTerm();
+  say('<code>git remote add origin</code> registers a destination for your code. Nothing is sent yet — git just stores the address.');
+  await type('git remote add origin https://github.com/you/my-project.git');
+  await sleep(700);
+  $('remote-url').textContent = 'github.com / you / my-project';
+  $('remote-side').classList.add('connected');
+  await sleep(2600);
+
+  // ── 3. git push ───────────────────────────────────────────────────────────
+  clearTerm();
+  say('<code>git push -u origin main</code> uploads your commits to GitHub. The <code>-u</code> links <b class="p">main</b> to <b class="p">origin/main</b> — future pushes just need <code>git push</code>.');
+  await type('git push -u origin main');
+  await sleep(500);
+  $('lbl-push').classList.add('lit');
+
+  // packets fly; remote graph draws simultaneously
+  const pushPackets = sendPackets('push', 3, '#a78bfa');
+  const remoteDrawing = (async () => {
+    await drawPath('rl-main', 'M 10 65 L 275 65', 950);
+    popNode('rc0'); fadeEl('rlbl-c0');
+    await sleep(200); popNode('rc1'); fadeEl('rlbl-c1');
+    await sleep(200); popNode('rc2'); fadeEl('rlbl-c2');
+  })();
+  await Promise.all([pushPackets, remoteDrawing]);
+
+  $('remote-empty').style.transition = 'opacity .4s';
+  $('remote-empty').style.opacity = '0';
+  $('rpill-main').style.transition = 'opacity .5s';
+  $('rpill-main').style.opacity = '1';
+  $('lorigin-pill').style.transition = 'opacity .5s';
+  $('lorigin-pill').style.opacity = '1';
+  $('lbl-push').classList.remove('lit');
+  await sleep(3000);
+
+  // ── 4. Teammate pushes to remote ─────────────────────────────────────────
+  clearTerm();
+  say('A teammate pushed a new commit from their machine. The remote has moved on — your local repo doesn\'t know about it yet.');
+  await sleep(1400);
+  await drawPath('rl-ext', 'M 275 65 L 380 65', 450);
+  await popNode('rc3');
+  fadeEl('rlbl-c3');
+  $('rpill-teammate').style.transition = 'opacity .5s';
+  $('rpill-teammate').style.opacity = '1';
+  await sleep(2800);
+
+  // ── 5. git pull ───────────────────────────────────────────────────────────
+  clearTerm();
+  say('<code>git pull</code> fetches the new commit <b>and</b> merges it into your branch in one step. Now your local repo and GitHub are perfectly in sync.');
+  await type('git pull');
+  await sleep(600);
+  $('lbl-pull').classList.add('lit-pull');
+
+  const pullPackets = sendPackets('pull', 1, '#34d399');
+  await sleep(380);
+  await drawPath('ll-ext', 'M 230 65 L 310 65', 450);
+  await popNode('lc3');
+  fadeEl('llbl-c3');
+  // show navbar.js in explorer
+  void $('ef-navbar').offsetWidth;
+  $('ef-navbar').style.transition = 'opacity .4s ease, transform .4s ease';
+  $('ef-navbar').style.opacity = '1';
+  $('ef-navbar').style.transform = 'none';
+  await moveHead(310, 65);
+  await pullPackets;
+  await moveOriginPill(310);
+  $('lbl-pull').classList.remove('lit-pull');
+  $('rpill-teammate').style.opacity = '0';
+  await sleep(2800);
+
+  // ── 6. Done ───────────────────────────────────────────────────────────────
+  clearTerm();
+  say('<b class="p">Push</b> to share your work. <b class="g">Pull</b> to receive others\'. The remote is just a shared copy everyone syncs to — every <code>.git/</code> folder holds the real history.');
+  $('cursor').style.display = 'none';
+  await sleep(600);
+  $('replay').classList.add('show');
+}
+
+$('replay').addEventListener('click', run);
+window.addEventListener('load', run);
+</script>
+</body>
+</html>

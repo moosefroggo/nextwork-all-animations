@@ -1,0 +1,1392 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>3D Node Network Simulation - Interactive</title>
+  <style>
+    body { margin: 0; overflow: hidden; background:#222; color: #eee; font-family: sans-serif; }
+    #canvas-container { width: 100vw; height: 100vh; position: relative; } /* Ensure canvas container can hold stars */
+    /* Ensure dat.gui is visible and usable */
+    .dg.main .close-button { background-color: #333; }
+    .dg li:not(.folder) { background: #333; border-bottom: 1px solid #444; }
+    .dg .cr.boolean:hover { background: #444; }
+    
+    .dg .cr.number input[type=text] { 
+        color: #eee;
+        width: 85px !important; 
+    }
+    .dg .cr.string input[type=text] { color: #eee; }
+    .dg .cr.color .c input[type=text] { color: #eee !important; }
+    .dg .ac { 
+        background: #444 !important;
+        border-bottom: 1px solid #555 !important;
+        color: #eee !important;
+        font-weight: bold !important;
+    }
+    .dg .ac:hover {
+        background: #555 !important;
+    }
+    #generatedCodeContainer button {
+        margin-top: 10px;
+        padding: 8px 15px;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-weight: bold;
+    }
+    #copyGeneratedCode {
+        background: #007bff; 
+        color: white;
+        margin-left: 5px;
+    }
+    #copyGeneratedCode:hover {
+        background: #0056b3;
+    }
+    #closeGeneratedCode {
+        background: #6c757d; 
+        color: white;
+    }
+    #closeGeneratedCode:hover {
+        background: #545b62;
+    }
+  </style>
+</head>
+<body>
+<div id="canvas-container"></div>
+<div id="generatedCodeContainer" style="display:none; position: fixed; top: 10px; right: 10px; width: 45%; height: 80%; background: rgba(0,0,0,0.85); border: 1px solid #555; overflow: auto; z-index: 1000; padding: 15px; box-sizing: border-box; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.5);">
+  <h3 style="margin-top:0; color: #fff;">Generated Embeddable App Code:</h3>
+  <textarea id="generatedCodeOutput" style="width: 100%; height: calc(100% - 80px); background: #1e1e1e; color: #d4d4d4; border: 1px solid #333; font-family: monospace; font-size: 0.8em; box-sizing: border-box; border-radius: 4px; padding: 10px;"></textarea>
+  <div style="text-align: right;">
+    <button id="copyGeneratedCode">Copy Code</button>
+    <button id="closeGeneratedCode">Close</button>
+  </div>
+</div>
+
+<script type="module">
+import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.142.0/build/three.module.js';
+import { GUI } from 'https://unpkg.com/dat.gui@0.7.9/build/dat.gui.module.js';
+
+// ========= Globals =========
+let scene, camera, renderer;
+let graphGroup, pulsesGroup, starFieldGroup, pulseTrailsGroup; // New groups
+let nodeMeshes = [];
+let edges = [], pulses = [];
+const clock = new THREE.Clock();
+let directionalLight, hemisphereLight;
+
+// Mouse control variables
+let mouseDown = false;
+let mouseX = 0, mouseY = 0;
+let targetRotationX = 0, targetRotationY = 0;
+let targetRotationOnMouseDownX = 0, targetRotationOnMouseDownY = 0;
+let mouseXOnMouseDown = 0, mouseYOnMouseDown = 0;
+let windowHalfX = window.innerWidth / 2;
+let windowHalfY = window.innerHeight / 2;
+let cameraDistance = 15; // Initial camera distance
+
+// Function to update camera position based on target rotations
+function updateCameraPosition() {
+  // Calculate position based on spherical coordinates
+  const phi = Math.PI/2 - targetRotationY; // Convert from -π/2 to π/2 range to 0 to π range
+  const theta = targetRotationX;
+  
+  camera.position.x = cameraDistance * Math.sin(phi) * Math.sin(theta);
+  camera.position.y = cameraDistance * Math.cos(phi);
+  camera.position.z = cameraDistance * Math.sin(phi) * Math.cos(theta);
+  
+  camera.lookAt(scene.position);
+}
+
+// Colors for random cubes
+const COLORS = [0xff0000, 0x2196f3, 0xffc107, 0x9c27b0, 0x4caf50, 0xf44336, 0xe91e63, 0x673ab7, 0x00bcd4, 0x8bc34a];
+
+// Local Storage Keys
+const SECRET_STORAGE_KEY = 'simulationSecretKeyExists_v3'; // Incremented version for new features
+const PARAMS_STORAGE_KEY = 'simulationParams_v3';        
+
+// ========= Parameters (Default values, might be overridden by local storage) =========
+const params = {
+  // Global & Scene
+  globalScale: 1.0,
+  backgroundMode: 'Starfield', // 'Solid Color', 'Starfield'
+  backgroundColor: '#222222',
+  cameraAutoRotate: false,
+  cameraAutoRotateSpeed: 0.0005,
+  enableMouseControls: true, // Enable/disable mouse controls
+
+  // Graph Structure
+  nodeCount: 12,
+  radius: 5.0,                 
+  
+  // Node Appearance
+  nodeColor: '#0029ff', 
+  nodeSize: 0.5,             
+  nodePulsationEnabled: true,
+  nodePulsationSpeed: 0.8,
+  nodePulsationAmount: 0.1,
+
+  // Cube Appearance
+  cubeSize: 0.25,            
+  cubeInteriorColor: '#ff0000', 
+  randomCubeColor: false,
+  softInternalCubeLight: true, 
+  cubeEdgeColor: '#000000',
+  cubeEdgeThickness: 1.0, // WebGL limitations apply
+
+  // Line Appearance
+  lineColor: '#999999', 
+  lineThickness: 1.0,    
+
+  // Animation & Interaction
+  pulseCount: 14,          
+  pulseSpeed: 0.23,        
+  rotationXIncrement: 0.0,    
+  rotationYIncrement: 0.004, 
+  rotationZIncrement: 0.0,    
+  nodeTakesPulseColor: false,
+  pulseTrailEnabled: true,
+  pulseTrailLength: 8, // Number of segments in the trail
+
+  // Debugging
+  debug: false,
+
+  generateApp: function() { generateEmbeddableApp(); }
+};
+
+// ========= Local Storage Functions =========
+function saveParamsToLocalStorage() {
+  try {
+    const paramsToSave = { ...params };
+    delete paramsToSave.generateApp; 
+    localStorage.setItem(PARAMS_STORAGE_KEY, JSON.stringify(paramsToSave));
+    localStorage.setItem(SECRET_STORAGE_KEY, 'true'); 
+  } catch (e) {
+    console.error('Failed to save parameters to local storage:', e);
+  }
+}
+
+function loadParamsFromLocalStorage() {
+  try {
+    if (localStorage.getItem(SECRET_STORAGE_KEY)) {
+      const storedParamsString = localStorage.getItem(PARAMS_STORAGE_KEY);
+      if (storedParamsString) {
+        const loadedParams = JSON.parse(storedParamsString);
+        for (const key in params) { 
+          if (loadedParams.hasOwnProperty(key) && key !== 'generateApp') {
+            params[key] = loadedParams[key];
+          }
+        }
+        if (params.debug) console.log('Parameters loaded from local storage.');
+      }
+    } else {
+      if (params.debug) console.log('No secret key found. Saving default parameters to local storage.');
+      saveParamsToLocalStorage();
+    }
+  } catch (e) {
+    console.error('Failed to load or parse parameters from local storage:', e);
+    saveParamsToLocalStorage();
+  }
+}
+
+// ========= Scaled Value Getters =========
+const getScaledRadius = () => params.radius * params.globalScale;
+const getScaledNodeSize = () => params.nodeSize * params.globalScale;
+const getScaledCubeSize = () => params.cubeSize * params.globalScale;
+const getScaledLineThickness = () => params.lineThickness * params.globalScale;
+const getScaledCubeEdgeThickness = () => params.cubeEdgeThickness * params.globalScale;
+
+
+init();
+
+// ========= Init =========
+function init() {
+  loadParamsFromLocalStorage(); 
+
+  scene = new THREE.Scene();
+
+  camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 2000); // Increased far plane for starfield
+  camera.position.set(10 * params.globalScale, 10 * params.globalScale, 15 * params.globalScale);
+  camera.lookAt(0, 0, 0);
+  // Ensure camera is far enough to see the entire scene
+  if (params.radius > 5) {
+    camera.position.z = 20 * params.globalScale;
+  }
+
+  renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true }); 
+  renderer.setPixelRatio(window.devicePixelRatio);
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.setClearColor(0x000000, params.backgroundMode === 'Starfield' ? 1 : 0); // Set initial clear color and alpha
+  renderer.shadowMap.enabled = true; 
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap; 
+  document.getElementById('canvas-container').appendChild(renderer.domElement);
+  
+  // Set up mouse event listeners
+  const canvas = renderer.domElement;
+  
+  // Initial camera distance 
+  cameraDistance = 15 * params.globalScale;
+  if (params.radius > 5) {
+    cameraDistance = 20 * params.globalScale;
+  }
+  
+  // Initialize target rotations based on camera position
+  targetRotationX = Math.PI / 4; // 45 degrees - a good starting angle
+  
+  function onMouseDown(event) {
+    if (!params.enableMouseControls) return;
+    
+    event.preventDefault();
+    mouseDown = true;
+    
+    mouseXOnMouseDown = event.clientX - windowHalfX;
+    mouseYOnMouseDown = event.clientY - windowHalfY;
+    targetRotationOnMouseDownX = targetRotationX;
+    targetRotationOnMouseDownY = targetRotationY;
+  }
+  
+  function onMouseMove(event) {
+    if (!params.enableMouseControls) return;
+    
+    if (mouseDown) {
+      mouseX = event.clientX - windowHalfX;
+      mouseY = event.clientY - windowHalfY;
+      
+      // Reduced sensitivity from 0.02 to 0.01 for smoother rotation
+      targetRotationX = targetRotationOnMouseDownX + (mouseX - mouseXOnMouseDown) * 0.01;
+      targetRotationY = targetRotationOnMouseDownY + (mouseY - mouseYOnMouseDown) * 0.01;
+      
+      // Limit vertical rotation to avoid flipping
+      targetRotationY = Math.max(-Math.PI/2 + 0.1, Math.min(Math.PI/2 - 0.1, targetRotationY));
+    }
+  }
+  
+  function onMouseUp() {
+    if (!params.enableMouseControls) return;
+    mouseDown = false;
+  }
+  
+  function onMouseWheel(event) {
+    if (!params.enableMouseControls) return;
+    
+    event.preventDefault();
+    
+    // Adjust zoom based on wheel delta - dramatically increased sensitivity with * 8
+    const delta = Math.sign(event.deltaY);
+    cameraDistance += delta * params.globalScale * 8;
+    
+    // Allow unlimited zoom range
+    cameraDistance = Math.max(0.1 * params.globalScale, cameraDistance);
+    
+    // Update camera position
+    updateCameraPosition();
+  }
+  
+  // Add event listeners
+  canvas.addEventListener('mousedown', onMouseDown, false);
+  document.addEventListener('mousemove', onMouseMove, false);
+  document.addEventListener('mouseup', onMouseUp, false);
+  canvas.addEventListener('wheel', onMouseWheel, false);
+  
+  // Handle window resize
+  function updateHalfDimensions() {
+    windowHalfX = window.innerWidth / 2;
+    windowHalfY = window.innerHeight / 2;
+  }
+  window.addEventListener('resize', updateHalfDimensions, false);
+  
+  scene.add(new THREE.AmbientLight(0x404040, 0.5)); 
+  hemisphereLight = new THREE.HemisphereLight(0xffffff, 0x444444, 0.8); 
+  hemisphereLight.position.set(0, 20 * params.globalScale, 0);
+  scene.add(hemisphereLight);
+
+  directionalLight = new THREE.DirectionalLight(0xffffff, 0.8); 
+  directionalLight.position.set(15 * params.globalScale, 20 * params.globalScale, 10 * params.globalScale); 
+  directionalLight.castShadow = true;
+  directionalLight.shadow.mapSize.width = 1024; 
+  directionalLight.shadow.mapSize.height = 1024; 
+  directionalLight.shadow.camera.near = 0.5;    
+  directionalLight.shadow.camera.far = 50 * params.globalScale;     
+  directionalLight.shadow.camera.left = -15 * params.globalScale;
+  directionalLight.shadow.camera.right = 15 * params.globalScale;
+  directionalLight.shadow.camera.top = 15 * params.globalScale;
+  directionalLight.shadow.camera.bottom = -15 * params.globalScale;
+  scene.add(directionalLight);
+
+  graphGroup  = new THREE.Group();
+  pulsesGroup = new THREE.Group();
+  starFieldGroup = new THREE.Group(); // For stars
+  pulseTrailsGroup = new THREE.Group(); // For pulse trails
+  scene.add(graphGroup, pulsesGroup, starFieldGroup, pulseTrailsGroup);
+
+  // Create starfield first if needed, then update background
+  if (params.backgroundMode === 'Starfield') buildStarfield();
+  
+  // Only call updateBackground after starfield is built
+  updateBackground(); // Set initial background
+
+  setupGUI(); 
+  window.addEventListener('resize', onResize);
+  rebuild(); 
+  
+  // Debug info
+  if (params.debug) console.log("Scene initialization:", {
+    "Camera position": camera.position,
+    "Renderer initialized": !!renderer,
+    "Scene children count": scene.children.length,
+    "Groups visible": {
+      "graphGroup": graphGroup.visible,
+      "pulsesGroup": pulsesGroup.visible,
+      "starFieldGroup": starFieldGroup.visible,
+      "pulseTrailsGroup": pulseTrailsGroup.visible
+    },
+    "Background mode": params.backgroundMode,
+    "Node count": params.nodeCount
+  });
+  
+  // Force initial render
+  if (renderer && scene && camera) {
+    if (params.debug) console.log("Forcing initial render");
+    renderer.render(scene, camera);
+  }
+  
+  animate();
+}
+
+// ========= Background Manager =========
+function updateBackground() {
+    if (params.backgroundMode === 'Solid Color') {
+        scene.background = new THREE.Color(params.backgroundColor);
+        starFieldGroup.visible = false;
+    } else if (params.backgroundMode === 'Starfield') {
+        scene.background = null; // Use default (transparent or renderer clear color if not set)
+        starFieldGroup.visible = true;
+        if (starFieldGroup.children.length === 0) buildStarfield(); // Build if not already built
+    }
+    // Make sure other groups are visible
+    graphGroup.visible = true;
+    pulsesGroup.visible = true;
+    pulseTrailsGroup.visible = true;
+    
+    if(renderer) renderer.setClearAlpha(params.backgroundMode === 'Starfield' ? 1 : 0); // Make renderer bg transparent if starfield is on
+}
+
+function buildStarfield() {
+    // Dispose existing star geometries and materials before clearing the group
+    starFieldGroup.children.forEach(child => {
+        if (child.geometry) child.geometry.dispose();
+        if (child.material) child.material.dispose();
+    });
+    starFieldGroup.clear();
+
+    // Create fresh geometry and material for the new stars
+    const starGeometry = new THREE.BufferGeometry();
+    const starMaterial = new THREE.PointsMaterial({ color: 0xffffff, size: 0.05 * params.globalScale, sizeAttenuation: true });
+    const starVertices = [];
+    for (let i = 0; i < 10000; i++) {
+        const x = THREE.MathUtils.randFloatSpread(1000); // Spread stars far out
+        const y = THREE.MathUtils.randFloatSpread(1000);
+        const z = THREE.MathUtils.randFloatSpread(1000);
+        starVertices.push(x, y, z);
+    }
+    starGeometry.setAttribute('position', new THREE.Float32BufferAttribute(starVertices, 3));
+    const stars = new THREE.Points(starGeometry, starMaterial);
+    starFieldGroup.add(stars);
+}
+
+// ========= GUI =========
+function setupGUI() {
+  const gui = new GUI();
+
+  function addControl(folderOrGui, paramKey, ...args) {
+    const controller = folderOrGui.add(params, paramKey, ...args);
+    controller.onChange(saveParamsToLocalStorage);
+    return controller;
+  }
+  function addColorControl(folderOrGui, paramKey, name) {
+    const controller = folderOrGui.addColor(params, paramKey).name(name);
+    controller.onChange(saveParamsToLocalStorage);
+    return controller;
+  }
+
+  const sceneFolder = gui.addFolder('Scene & Camera');
+  addControl(sceneFolder, 'globalScale').name('Global Scale').onChange(() => {
+      rebuild();
+      if(directionalLight) {
+        directionalLight.shadow.camera.left = -15 * params.globalScale;
+        directionalLight.shadow.camera.right = 15 * params.globalScale;
+        directionalLight.shadow.camera.top = 15 * params.globalScale;
+        directionalLight.shadow.camera.bottom = -15 * params.globalScale;
+        directionalLight.shadow.camera.far = 50 * params.globalScale;
+        directionalLight.shadow.camera.updateProjectionMatrix();
+      }
+      if(starFieldGroup.children.length > 0 && params.backgroundMode === 'Starfield') { buildStarfield(); } // Rebuild stars on scale change
+      saveParamsToLocalStorage();
+    });
+  addControl(sceneFolder, 'backgroundMode', ['Solid Color', 'Starfield']).name('Background').onChange(() => { updateBackground(); saveParamsToLocalStorage(); });
+  addColorControl(sceneFolder, 'backgroundColor', 'BG Color').onChange(() => { updateBackground(); saveParamsToLocalStorage(); });
+  addControl(sceneFolder, 'cameraAutoRotate').name('Auto-Rotate Cam').onChange(() => {
+    saveParamsToLocalStorage();
+  });
+  addControl(sceneFolder, 'cameraAutoRotateSpeed').name('Cam Rotate Speed').onChange(saveParamsToLocalStorage);
+  addControl(sceneFolder, 'enableMouseControls').name('Mouse Controls').onChange(() => {
+    // When mouse controls are enabled, restore the default camera position
+    if (params.enableMouseControls) {
+      // Make sure we have a reasonable starting rotation
+      if (targetRotationX === 0 && targetRotationY === 0) {
+        targetRotationX = Math.PI / 4;
+      }
+      updateCameraPosition();
+    }
+    saveParamsToLocalStorage();
+  });
+  sceneFolder.open();
+  
+  const structureFolder = gui.addFolder('Graph Structure');
+  addControl(structureFolder, 'nodeCount').name('Node Count').onChange(() => { rebuild(); saveParamsToLocalStorage(); });
+  addControl(structureFolder, 'radius').name('Base Radius').onChange(() => { rebuild(); saveParamsToLocalStorage(); });
+
+  const nodeFolder = gui.addFolder('Node Appearance');
+  addColorControl(nodeFolder, 'nodeColor', 'Node Color').onChange(() => { rebuild(); saveParamsToLocalStorage(); });
+  addControl(nodeFolder, 'nodeSize').name('Base Node Size').onChange(() => { rebuild(); saveParamsToLocalStorage(); });
+  addControl(nodeFolder, 'nodePulsationEnabled').name('Pulsate Nodes').onChange(() => { saveParamsToLocalStorage(); });
+  addControl(nodeFolder, 'nodePulsationSpeed').name('Pulsate Speed').onChange(saveParamsToLocalStorage);
+  addControl(nodeFolder, 'nodePulsationAmount').name('Pulsate Amount').onChange(saveParamsToLocalStorage);
+
+
+  const cubeFolder = gui.addFolder('Cube Appearance');
+  addControl(cubeFolder, 'cubeSize').name('Base Cube Size').onChange(() => { rebuild(); saveParamsToLocalStorage(); });
+  addColorControl(cubeFolder, 'cubeInteriorColor', 'Cube Interior Color').onChange(() => {
+      if (!params.randomCubeColor) rebuildPulses();
+      saveParamsToLocalStorage();
+  });
+  addControl(cubeFolder, 'randomCubeColor').name('Random Cube Color').onChange(() => { rebuildPulses(); saveParamsToLocalStorage(); });
+  addControl(cubeFolder, 'softInternalCubeLight').name('Soft Internal Light').onChange(() => { rebuildPulses(); saveParamsToLocalStorage(); }); 
+  addColorControl(cubeFolder, 'cubeEdgeColor', 'Edge Color').onChange(() => { rebuildPulses(); saveParamsToLocalStorage(); });
+  addControl(cubeFolder, 'cubeEdgeThickness').name('Edge Thickness').onChange(() => { rebuildPulses(); saveParamsToLocalStorage(); });
+
+
+  const lineFolder = gui.addFolder('Line Appearance');
+  addColorControl(lineFolder, 'lineColor', 'Line Color').onChange(() => { rebuild(); saveParamsToLocalStorage(); });
+  addControl(lineFolder, 'lineThickness').name('Base Line Thickness').onChange(() => { rebuild(); saveParamsToLocalStorage(); }); 
+  
+  const animationFolder = gui.addFolder('Animation & Interaction');
+  addControl(animationFolder, 'pulseCount').name('Pulse Count').onChange(() => { rebuildPulses(); saveParamsToLocalStorage(); });
+  addControl(animationFolder, 'pulseSpeed').name('Pulse Speed').onChange(saveParamsToLocalStorage); 
+  const rotXControl = addControl(animationFolder, 'rotationXIncrement').name('Graph Rot X').onChange(saveParamsToLocalStorage);
+  rotXControl.step(0.0001);
+  
+  const rotYControl = addControl(animationFolder, 'rotationYIncrement').name('Graph Rot Y').onChange(saveParamsToLocalStorage);
+  rotYControl.step(0.0001);
+  
+  const rotZControl = addControl(animationFolder, 'rotationZIncrement').name('Graph Rot Z').onChange(saveParamsToLocalStorage);
+  rotZControl.step(0.0001);
+  addControl(animationFolder, 'nodeTakesPulseColor').name('Node Takes Pulse Color').onChange(saveParamsToLocalStorage);
+  addControl(animationFolder, 'pulseTrailEnabled').name('Enable Pulse Trails').onChange(() => { rebuildPulses(); saveParamsToLocalStorage();}); // Rebuild pulses to add/remove trail logic
+  addControl(animationFolder, 'pulseTrailLength').name('Trail Length').onChange(() => { rebuildPulses(); saveParamsToLocalStorage();});
+
+  const debugFolder = gui.addFolder('Debugging');
+  addControl(debugFolder, 'debug').name('Enable Debug');
+
+  gui.add(params, 'generateApp').name('Generate Embeddable App');
+
+  document.getElementById('closeGeneratedCode').addEventListener('click', () => {
+    document.getElementById('generatedCodeContainer').style.display = 'none';
+  });
+
+  const copyButton = document.getElementById('copyGeneratedCode');
+  const codeOutputTextarea = document.getElementById('generatedCodeOutput');
+  copyButton.addEventListener('click', async () => { /* ... copy logic ... */ }); // (Copy logic unchanged for brevity)
+}
+
+// ========= Platonic Solid Vertex Calculation (Unchanged) =========
+function getPlatonicSolidVertices(count, radius) {
+    let points = []; const p = (1 + Math.sqrt(5)) / 2; const ip = 1 / p; 
+    switch (count) {
+        case 4: points = [ new THREE.Vector3(1,1,1),new THREE.Vector3(1,-1,-1),new THREE.Vector3(-1,1,-1),new THREE.Vector3(-1,-1,1)]; break;
+        case 6: points = [ new THREE.Vector3(1,0,0),new THREE.Vector3(-1,0,0),new THREE.Vector3(0,1,0),new THREE.Vector3(0,-1,0),new THREE.Vector3(0,0,1),new THREE.Vector3(0,0,-1)]; break;
+        case 8: points = [ new THREE.Vector3(1,1,1),new THREE.Vector3(1,1,-1),new THREE.Vector3(1,-1,1),new THREE.Vector3(1,-1,-1),new THREE.Vector3(-1,1,1),new THREE.Vector3(-1,1,-1),new THREE.Vector3(-1,-1,1),new THREE.Vector3(-1,-1,-1)]; break;
+        case 12: const X= .525731112119133606; const Z= .850650808352039932; points=[new THREE.Vector3(-X,0,Z),new THREE.Vector3(X,0,Z),new THREE.Vector3(-X,0,-Z),new THREE.Vector3(X,0,-Z),new THREE.Vector3(0,Z,X),new THREE.Vector3(0,Z,-X),new THREE.Vector3(0,-Z,X),new THREE.Vector3(0,-Z,-X),new THREE.Vector3(Z,X,0),new THREE.Vector3(-Z,X,0),new THREE.Vector3(Z,-X,0),new THREE.Vector3(-Z,-X,0)]; return points.map(pt=>pt.multiplyScalar(radius));
+        case 20: points=[new THREE.Vector3(1,1,1),new THREE.Vector3(1,1,-1),new THREE.Vector3(1,-1,1),new THREE.Vector3(1,-1,-1),new THREE.Vector3(-1,1,1),new THREE.Vector3(-1,1,-1),new THREE.Vector3(-1,-1,1),new THREE.Vector3(-1,-1,-1)]; const p_c=[new THREE.Vector3(0,ip,p),new THREE.Vector3(0,ip,-p),new THREE.Vector3(0,-ip,p),new THREE.Vector3(0,-ip,-p),new THREE.Vector3(ip,p,0),new THREE.Vector3(ip,-p,0),new THREE.Vector3(-ip,p,0),new THREE.Vector3(-ip,-p,0),new THREE.Vector3(p,0,ip),new THREE.Vector3(p,0,-ip),new THREE.Vector3(-p,0,ip),new THREE.Vector3(-p,0,-ip)]; p_c.forEach(v=>points.push(v)); break;
+        default: return [];
+    } return points.map(pt=>pt.normalize().multiplyScalar(radius));
+}
+
+// ========= Helper =========
+function makeCube(defaultColor, isTrailSegment = false, trailOpacity = 1.0) {
+  const s = isTrailSegment ? getScaledCubeSize() * 0.3 : getScaledCubeSize(); // Trail segments are smaller
+  const geom = new THREE.BoxGeometry(s, s, s);
+  let chosenColorHex;
+  if (params.randomCubeColor && !isTrailSegment) { // Trails use main cube color
+    chosenColorHex = COLORS[Math.floor(Math.random() * COLORS.length)];
+  } else {
+    chosenColorHex = new THREE.Color(defaultColor).getHex();
+  }
+
+  const isTransparent = params.softInternalCubeLight || isTrailSegment;
+  let opacity = isTrailSegment ? trailOpacity : (params.softInternalCubeLight ? 0.85 : 1.0);
+
+  const fillMaterial = new THREE.MeshStandardMaterial({ 
+    color: chosenColorHex, 
+    emissive: chosenColorHex, 
+    emissiveIntensity: (params.softInternalCubeLight && !isTrailSegment) ? 0.5 : (isTrailSegment ? 0.1 : 0.2),
+    roughness: 0.6, 
+    metalness: 0.1,
+    transparent: isTransparent,
+    opacity: opacity
+  });
+  const cubeMesh = new THREE.Mesh(geom, fillMaterial);
+  if (!isTrailSegment) cubeMesh.castShadow = true; 
+  
+  const edgeGeom = new THREE.EdgesGeometry(geom); 
+  const edgeMat = new THREE.LineBasicMaterial({ 
+      color: new THREE.Color(params.cubeEdgeColor), // Use new edge color param
+      linewidth: getScaledCubeEdgeThickness(),      // Use new edge thickness param (WebGL limitations apply)
+      transparent: isTransparent, 
+      opacity: isTransparent ? Math.min(opacity, 0.7) : 1.0 // Make edges slightly less opaque if transparent
+    });
+  const edgeLines = new THREE.LineSegments(edgeGeom, edgeMat);
+  
+  const group = new THREE.Group();
+  group.add(cubeMesh); 
+  group.add(edgeLines);
+  group.userData = { color: chosenColorHex, isTrail: isTrailSegment };
+  if (!isTrailSegment) group.castShadow = true; 
+
+  if (params.softInternalCubeLight && !isTrailSegment) {
+    const internalLight = new THREE.PointLight(chosenColorHex, 0.7, s * 1.5, 2); 
+    internalLight.castShadow = false; 
+    cubeMesh.add(internalLight); 
+    group.userData.internalLight = internalLight;
+  }
+  return group;
+}
+
+// ========= Cleanup Helper =========
+function disposeGroup(group) {
+  if (!group) return;
+  group.traverse(obj => {
+    if (obj.geometry) obj.geometry.dispose();
+    if (obj.material) {
+      if (Array.isArray(obj.material)) {
+        obj.material.forEach(m => m.dispose());
+      } else {
+        obj.material.dispose();
+      }
+    }
+    if (obj.isLight && typeof obj.dispose === 'function') {
+      obj.dispose();
+    }
+  });
+  group.clear();
+}
+
+// ========= Build Graph =========
+function rebuild() {
+  // Clear all groups first to ensure a fresh rebuild
+  disposeGroup(graphGroup);
+  disposeGroup(pulsesGroup);
+  disposeGroup(pulseTrailsGroup);
+  
+  // Ensure all groups are visible
+  graphGroup.visible = true;
+  pulsesGroup.visible = true;
+  pulseTrailsGroup.visible = true;
+  
+  updateBackground(); // Ensure background is correct on rebuild
+  if (starFieldGroup.children.length > 0 && params.backgroundMode === 'Starfield') buildStarfield(); // Rebuild stars on scale changes etc.
+
+  // Update light positions based on scale
+  if(directionalLight) {
+    directionalLight.position.set(15 * params.globalScale, 20 * params.globalScale, 10 * params.globalScale);
+    directionalLight.shadow.camera.left = -15 * params.globalScale;
+    directionalLight.shadow.camera.right = 15 * params.globalScale;
+    directionalLight.shadow.camera.top = 15 * params.globalScale;
+    directionalLight.shadow.camera.bottom = -15 * params.globalScale;
+    directionalLight.shadow.camera.far = 50 * params.globalScale; 
+    directionalLight.shadow.camera.updateProjectionMatrix();
+  }
+  if(hemisphereLight) {
+    hemisphereLight.position.set(0, 20 * params.globalScale, 0);
+  }
+  
+  if (camera) { // Adjust camera position with global scale to keep scene in view
+    let zPosition = 15 * params.globalScale;
+    // Ensure camera is far enough to see the entire scene based on radius
+    if (params.radius > 5) {
+      zPosition = 20 * params.globalScale;
+    }
+    camera.position.set(10 * params.globalScale, 10 * params.globalScale, zPosition);
+    camera.lookAt(0,0,0);
+  }
+
+  buildGraph();
+  rebuildPulses();
+  
+  // Force a render after rebuilding
+  if (renderer) {
+    renderer.render(scene, camera);
+  }
+}
+
+function buildGraph() {
+  graphGroup.clear();
+  nodeMeshes = []; edges = [];
+  let nodePositions = [];
+  const currentRadius = getScaledRadius();
+  const currentNodeSize = getScaledNodeSize();
+  const currentLineThickness = getScaledLineThickness(); 
+  const platonicSolidVertexCounts = [4, 6, 8, 12, 20];
+  const isPlatonic = platonicSolidVertexCounts.includes(params.nodeCount);
+
+  if (isPlatonic) {
+    nodePositions = getPlatonicSolidVertices(params.nodeCount, currentRadius);
+  } else {
+    for (let i = 0; i < params.nodeCount; i++) {
+      const phi = Math.acos(-1 + (2 * i) / params.nodeCount);
+      const theta = Math.sqrt(params.nodeCount * Math.PI) * phi;
+      nodePositions.push(new THREE.Vector3( currentRadius * Math.sin(phi) * Math.cos(theta), currentRadius * Math.sin(phi) * Math.sin(theta), currentRadius * Math.cos(phi) ));
+    }
+  }
+
+  const lineMaterial = new THREE.LineBasicMaterial({ 
+      color: new THREE.Color(params.lineColor),
+      linewidth: currentLineThickness 
+    });
+  const nodeGeometry = new THREE.SphereGeometry(currentNodeSize, 32, 16); // Increased segments for smoother nodes
+
+  nodePositions.forEach((pos, i) => {
+    const nodeMaterial = new THREE.MeshStandardMaterial({ 
+        color: new THREE.Color(params.nodeColor), 
+        emissive: new THREE.Color(params.nodeColor), 
+        emissiveIntensity: 0.3,
+        roughness: 0.5,
+        metalness: 0.2
+    });
+    const sphereMesh = new THREE.Mesh(nodeGeometry, nodeMaterial);
+    sphereMesh.position.copy(pos);
+    sphereMesh.castShadow = true; 
+    graphGroup.add(sphereMesh);
+    nodeMeshes.push(sphereMesh);
+    for (let j = i + 1; j < nodePositions.length; j++) {
+      const lineGeometry = new THREE.BufferGeometry().setFromPoints([pos, nodePositions[j]]);
+      graphGroup.add(new THREE.Line(lineGeometry, lineMaterial));
+      edges.push({ from: i, to: j });
+    }
+  });
+}
+
+// ========= Pulses & Trails =========
+function rebuildPulses() {
+  disposeGroup(pulsesGroup);
+  disposeGroup(pulseTrailsGroup); // Clear old trails
+  pulses = [];
+  if (!edges.length || params.pulseCount === 0) return;
+  for (let i = 0; i < params.pulseCount; i++) {
+    const pulseCube = makeCube(params.cubeInteriorColor);
+    const edge = edges[Math.floor(Math.random() * edges.length)];
+    pulseCube.userData = { 
+        from: edge.from, to: edge.to, t: Math.random(), 
+        color: pulseCube.userData.color, 
+        internalLight: pulseCube.userData.internalLight,
+        trailSegments: [] // For storing trail objects
+    };
+    updatePulsePosition(pulseCube);
+    pulsesGroup.add(pulseCube);
+    pulses.push(pulseCube);
+  }
+}
+
+function updatePulsePosition(pulseCube) {
+  if (nodeMeshes[pulseCube.userData.from] && nodeMeshes[pulseCube.userData.to]) {
+    const startNodePos = nodeMeshes[pulseCube.userData.from].position;
+    const endNodePos = nodeMeshes[pulseCube.userData.to].position;
+    pulseCube.position.lerpVectors(startNodePos, endNodePos, pulseCube.userData.t);
+
+    // Update pulse trail
+    if (params.pulseTrailEnabled) {
+        const trailSegments = pulseCube.userData.trailSegments;
+        const maxTrailLength = params.pulseTrailLength;
+
+        // Add new trail segment
+        if (trailSegments.length < maxTrailLength || Math.random() < 0.3) { // Add segment less frequently than every frame
+            const trailOpacity = 1.0 - (trailSegments.length / maxTrailLength) * 0.8; // Fade out
+            const trailSegment = makeCube(pulseCube.userData.color, true, trailOpacity * 0.5); // isTrail=true, opacity
+            trailSegment.position.copy(pulseCube.position);
+            trailSegment.scale.setScalar(0.5 + (trailSegments.length / maxTrailLength) * 0.5); // Smaller further back
+            pulseTrailsGroup.add(trailSegment);
+            trailSegments.unshift(trailSegment); // Add to beginning
+        }
+
+        // Remove oldest trail segment if too long
+        while (trailSegments.length > maxTrailLength) {
+            const oldSegment = trailSegments.pop();
+            pulseTrailsGroup.remove(oldSegment);
+            if (oldSegment.geometry) oldSegment.geometry.dispose();
+            if (oldSegment.material) oldSegment.material.dispose();
+        }
+
+        // Update opacity and position of existing segments (optional, could just fade and remove)
+        trailSegments.forEach((segment, index) => {
+            // Check if segment and its material exist before setting properties
+            if (segment && segment.children && segment.children.length > 0) {
+                // Get the first child which has the material (the cube mesh)
+                const cubeMesh = segment.children[0];
+                if (cubeMesh && cubeMesh.material) {
+                    cubeMesh.material.opacity = (1.0 - (index / maxTrailLength)) * 0.4; // Fade further back
+                    
+                    // If too faint, remove the segment
+                    if(cubeMesh.material.opacity <= 0.01) {
+                        pulseTrailsGroup.remove(segment);
+                        segment.children.forEach(child => {
+                            if (child.geometry) child.geometry.dispose();
+                            if (child.material) child.material.dispose();
+                        });
+                        pulseCube.userData.trailSegments.splice(index, 1);
+                    }
+                }
+            }
+        });
+    }
+  }
+}
+
+function updatePulse(pulseCube, deltaTime) {
+  pulseCube.userData.t += params.pulseSpeed * deltaTime;
+  if (pulseCube.userData.t >= 1) {
+    const targetNodeIndex = pulseCube.userData.to;
+    const pulseActualColor = pulseCube.userData.color;
+    if (params.nodeTakesPulseColor && nodeMeshes[targetNodeIndex]) {
+        const targetNodeMaterial = nodeMeshes[targetNodeIndex].material;
+        targetNodeMaterial.color.setHex(pulseActualColor);
+        if (targetNodeMaterial.emissive) {
+             targetNodeMaterial.emissive.setHex(pulseActualColor);
+        }
+    }
+    pulseCube.userData.t = 0;
+    // Clear trail for this pulse when it resets
+    if (pulseCube.userData.trailSegments) {
+        pulseCube.userData.trailSegments.forEach(segment => {
+            pulseTrailsGroup.remove(segment);
+            if (segment.geometry) segment.geometry.dispose();
+            if (segment.material) segment.material.dispose();
+        });
+        pulseCube.userData.trailSegments = [];
+    }
+
+    const connectedEdges = edges.filter(e => e.from === targetNodeIndex || e.to === targetNodeIndex);
+    let nextEdge;
+    if (connectedEdges.length > 0) {
+        nextEdge = connectedEdges[Math.floor(Math.random() * connectedEdges.length)];
+        pulseCube.userData.from = targetNodeIndex; 
+        pulseCube.userData.to = (nextEdge.from === targetNodeIndex) ? nextEdge.to : nextEdge.from;
+    } else if (edges.length > 0) {
+        nextEdge = edges[Math.floor(Math.random() * edges.length)];
+        pulseCube.userData.from = nextEdge.from; pulseCube.userData.to = nextEdge.to;
+    } else { return; }
+  }
+  updatePulsePosition(pulseCube); // This will also update/create trail segments
+}
+
+// ========= Animation =========
+function animate() {
+  requestAnimationFrame(animate);
+  const deltaTime = clock.getDelta();
+  const time = clock.getElapsedTime();
+
+  // Ensure all groups are visible on each frame
+  graphGroup.visible = true;
+  pulsesGroup.visible = true;
+  pulseTrailsGroup.visible = true;
+  if (params.backgroundMode === 'Starfield') {
+    starFieldGroup.visible = true;
+  }
+
+  pulses.forEach(p => updatePulse(p, deltaTime));
+  
+  if (params.nodePulsationEnabled && nodeMeshes.length > 0) {
+      nodeMeshes.forEach(node => {
+          const scale = 1 + Math.sin(time * params.nodePulsationSpeed * 5 + node.id * 0.5) * params.nodePulsationAmount;
+          node.scale.set(scale, scale, scale);
+      });
+  } else if (!params.nodePulsationEnabled && nodeMeshes.length > 0) {
+      nodeMeshes.forEach(node => node.scale.set(1,1,1)); // Reset scale if disabled
+  }
+
+  // Handle auto-rotation and mouse controls
+  if (params.enableMouseControls) {
+    // When mouse controls are enabled, check if we also have auto-rotation
+    if (params.cameraAutoRotate) {
+      // Auto-rotate with mouse controls enabled
+      targetRotationX += params.cameraAutoRotateSpeed * 2;
+    }
+    // Always update camera position when mouse controls are enabled
+    updateCameraPosition();
+  }
+  // If mouse controls are disabled but auto-rotation is enabled
+  else if (params.cameraAutoRotate) {
+    // Use the original auto-rotation method
+    camera.position.x = Math.sin(time * params.cameraAutoRotateSpeed) * cameraDistance;
+    camera.position.z = Math.cos(time * params.cameraAutoRotateSpeed) * cameraDistance;
+    camera.lookAt(scene.position);
+  }
+  
+  graphGroup.rotation.x += params.rotationXIncrement; 
+  graphGroup.rotation.y += params.rotationYIncrement; 
+  graphGroup.rotation.z += params.rotationZIncrement; 
+  pulsesGroup.rotation.copy(graphGroup.rotation); 
+  pulseTrailsGroup.rotation.copy(graphGroup.rotation); // Rotate trails with graph
+
+  // Check if rendering is working properly
+  if (renderer && scene && camera) {
+    renderer.render(scene, camera);
+  } else {
+    console.error("Renderer, scene, or camera not initialized properly");
+  }
+}
+
+// ========= Resize =========
+function onResize() {
+  if (camera && renderer) {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    
+    // Update window dimensions for mouse controls
+    windowHalfX = window.innerWidth / 2;
+    windowHalfY = window.innerHeight / 2;
+    
+    // Force a render after resize
+    renderer.render(scene, camera);
+  }
+}
+
+// ========= Embeddable App Generator =========
+function generateEmbeddableApp() {
+    const generatedParams = JSON.parse(JSON.stringify(params)); 
+    delete generatedParams.generateApp; 
+
+    const generatedCode = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Embeddable 3D Node Simulation</title>
+  <style>
+    body { margin: 0; overflow: hidden; }
+    #simulation-canvas-container { 
+        width: 100%; 
+        height: 500px; /* Default height, user can change */
+        position: relative;
+    }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+  <div id="simulation-canvas-container"></div>
+
+  <script type="module">
+    import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.142.0/build/three.module.js';
+
+    // --- BEGIN USER-CONFIGURABLE PARAMETERS ---
+    const config = ${JSON.stringify(generatedParams, null, 2)};
+    const EMBED_COLORS = [${COLORS.map(c => "0x" + c.toString(16).padStart(6, '0')).join(', ')}];
+    // --- END USER-CONFIGURABLE PARAMETERS ---
+
+    let scene_embed, camera_embed, renderer_embed;
+    let graphGroup_embed, pulsesGroup_embed, starFieldGroup_embed, pulseTrailsGroup_embed;
+    let nodeMeshes_embed = [];
+    let edges_embed = [], pulses_embed = [];
+    const clock_embed = new THREE.Clock();
+    let animationFrameId_embed;
+    let directionalLight_embed, hemisphereLight_embed;
+
+    // Scaled value getters for embedded version
+    const getScaledRadius_embed = () => config.radius * config.globalScale;
+    const getScaledNodeSize_embed = () => config.nodeSize * config.globalScale;
+    const getScaledCubeSize_embed = () => config.cubeSize * config.globalScale;
+    const getScaledLineThickness_embed = () => config.lineThickness * config.globalScale;
+    const getScaledCubeEdgeThickness_embed = () => config.cubeEdgeThickness * config.globalScale;
+
+
+    function updateBackground_embed() {
+        if (config.backgroundMode === 'Solid Color') {
+            scene_embed.background = new THREE.Color(config.backgroundColor);
+            if(starFieldGroup_embed) starFieldGroup_embed.visible = false;
+        } else if (config.backgroundMode === 'Starfield') {
+            scene_embed.background = null; 
+            if(starFieldGroup_embed) starFieldGroup_embed.visible = true;
+            if (starFieldGroup_embed && starFieldGroup_embed.children.length === 0) buildStarfield_embed();
+        }
+        if(renderer_embed) renderer_embed.setClearAlpha(config.backgroundMode === 'Starfield' ? 1 : 0);
+    }
+
+    function buildStarfield_embed() {
+        if(!starFieldGroup_embed) return;
+        // Dispose existing star geometries and materials before clearing the group
+        starFieldGroup_embed.children.forEach(child => {
+            if (child.geometry) child.geometry.dispose();
+            if (child.material) child.material.dispose();
+        });
+        starFieldGroup_embed.clear();
+
+        // Create fresh geometry and material for the new stars
+        const starGeometry = new THREE.BufferGeometry();
+        const starMaterial = new THREE.PointsMaterial({ color: 0xffffff, size: 0.05 * config.globalScale, sizeAttenuation: true });
+        const starVertices = [];
+        for (let i = 0; i < 10000; i++) {
+            const x = THREE.MathUtils.randFloatSpread(1000); 
+            const y = THREE.MathUtils.randFloatSpread(1000);
+            const z = THREE.MathUtils.randFloatSpread(1000);
+            starVertices.push(x, y, z);
+        }
+        starGeometry.setAttribute('position', new THREE.Float32BufferAttribute(starVertices, 3));
+        const stars = new THREE.Points(starGeometry, starMaterial);
+        starFieldGroup_embed.add(stars);
+    }
+
+
+    function init_embed() {
+      const container = document.getElementById('simulation-canvas-container');
+      if (!container) {
+        console.error('Container #simulation-canvas-container not found.');
+        return;
+      }
+
+      scene_embed = new THREE.Scene();
+      updateBackground_embed(); // Initial background
+
+      camera_embed = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 2000);
+      camera_embed.position.set(10 * config.globalScale, 10 * config.globalScale, 15 * config.globalScale); 
+      camera_embed.lookAt(0, 0, 0);
+
+      renderer_embed = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+      renderer_embed.setPixelRatio(window.devicePixelRatio);
+      renderer_embed.setSize(container.clientWidth, container.clientHeight);
+      renderer_embed.setClearColor(0x000000, config.backgroundMode === 'Starfield' ? 1 : 0); // Correct initial clear alpha
+      renderer_embed.shadowMap.enabled = true;
+      renderer_embed.shadowMap.type = THREE.PCFSoftShadowMap;
+      container.appendChild(renderer_embed.domElement);
+
+      scene_embed.add(new THREE.AmbientLight(0x404040, 0.5));
+      hemisphereLight_embed = new THREE.HemisphereLight(0xffffff, 0x444444, 0.8);
+      hemisphereLight_embed.position.set(0, 20 * config.globalScale, 0);
+      scene_embed.add(hemisphereLight_embed);
+
+      directionalLight_embed = new THREE.DirectionalLight(0xffffff, 0.8);
+      directionalLight_embed.position.set(15 * config.globalScale, 20 * config.globalScale, 10 * config.globalScale);
+      directionalLight_embed.castShadow = true;
+      directionalLight_embed.shadow.mapSize.width = 1024; 
+      directionalLight_embed.shadow.mapSize.height = 1024;
+      directionalLight_embed.shadow.camera.near = 0.5;    
+      directionalLight_embed.shadow.camera.far = 50 * config.globalScale;     
+      directionalLight_embed.shadow.camera.left = -15 * config.globalScale;
+      directionalLight_embed.shadow.camera.right = 15 * config.globalScale;
+      directionalLight_embed.shadow.camera.top = 15 * config.globalScale;
+      directionalLight_embed.shadow.camera.bottom = -15 * config.globalScale;
+      scene_embed.add(directionalLight_embed);
+
+      graphGroup_embed = new THREE.Group();
+      pulsesGroup_embed = new THREE.Group();
+      starFieldGroup_embed = new THREE.Group();
+      pulseTrailsGroup_embed = new THREE.Group();
+      scene_embed.add(graphGroup_embed, pulsesGroup_embed, starFieldGroup_embed, pulseTrailsGroup_embed);
+      
+      if (config.backgroundMode === 'Starfield') buildStarfield_embed();
+
+
+      window.addEventListener('resize', onResize_embed);
+      rebuild_embed();
+      if (animationFrameId_embed) cancelAnimationFrame(animationFrameId_embed);
+      animate_embed();
+    }
+
+    function getPlatonicSolidVertices_embed(count, radius) {
+        let points = []; const p = (1 + Math.sqrt(5)) / 2; const ip = 1 / p; 
+        switch (count) {
+            case 4: points = [ new THREE.Vector3(1,1,1),new THREE.Vector3(1,-1,-1),new THREE.Vector3(-1,1,-1),new THREE.Vector3(-1,-1,1) ]; break;
+            case 6: points = [ new THREE.Vector3(1,0,0),new THREE.Vector3(-1,0,0),new THREE.Vector3(0,1,0),new THREE.Vector3(0,-1,0),new THREE.Vector3(0,0,1),new THREE.Vector3(0,0,-1) ]; break;
+            case 8: points = [ new THREE.Vector3(1,1,1),new THREE.Vector3(1,1,-1),new THREE.Vector3(1,-1,1),new THREE.Vector3(1,-1,-1),new THREE.Vector3(-1,1,1),new THREE.Vector3(-1,1,-1),new THREE.Vector3(-1,-1,1),new THREE.Vector3(-1,-1,-1) ]; break;
+            case 12: const X_ico=0.525731112119133606; const Z_ico=0.850650808352039932; points = [ new THREE.Vector3(-X_ico,0,Z_ico),new THREE.Vector3(X_ico,0,Z_ico),new THREE.Vector3(-X_ico,0,-Z_ico),new THREE.Vector3(X_ico,0,-Z_ico),new THREE.Vector3(0,Z_ico,X_ico),new THREE.Vector3(0,Z_ico,-X_ico),new THREE.Vector3(0,-Z_ico,X_ico),new THREE.Vector3(0,-Z_ico,-X_ico),new THREE.Vector3(Z_ico,X_ico,0),new THREE.Vector3(-Z_ico,X_ico,0),new THREE.Vector3(Z_ico,-X_ico,0),new THREE.Vector3(-Z_ico,-X_ico,0) ]; return points.map(pt=>pt.multiplyScalar(radius));
+            case 20: points = [ new THREE.Vector3(1,1,1),new THREE.Vector3(1,1,-1),new THREE.Vector3(1,-1,1),new THREE.Vector3(1,-1,-1),new THREE.Vector3(-1,1,1),new THREE.Vector3(-1,1,-1),new THREE.Vector3(-1,-1,1),new THREE.Vector3(-1,-1,-1) ]; const p_coords = [ new THREE.Vector3(0,ip,p),new THREE.Vector3(0,ip,-p),new THREE.Vector3(0,-ip,p),new THREE.Vector3(0,-ip,-p),new THREE.Vector3(ip,p,0),new THREE.Vector3(ip,-p,0),new THREE.Vector3(-ip,p,0),new THREE.Vector3(-ip,-p,0),new THREE.Vector3(p,0,ip),new THREE.Vector3(p,0,-ip),new THREE.Vector3(-p,0,ip),new THREE.Vector3(-p,0,-ip) ]; p_coords.forEach(v=>points.push(v)); break;
+            default: return [];
+        }
+        return points.map(pt => pt.normalize().multiplyScalar(radius));
+    }
+
+    function makeCube_embed(defaultColor, isTrailSegment = false, trailOpacity = 1.0) {
+      const s = isTrailSegment ? getScaledCubeSize_embed() * 0.3 : getScaledCubeSize_embed();
+      const geom = new THREE.BoxGeometry(s,s,s);
+      let chosenColorHex;
+      if (config.randomCubeColor && !isTrailSegment) { chosenColorHex = EMBED_COLORS[Math.floor(Math.random() * EMBED_COLORS.length)]; }
+      else { chosenColorHex = new THREE.Color(defaultColor).getHex(); }
+      
+      const isTransparent_embed = config.softInternalCubeLight || isTrailSegment;
+      let opacity_embed = isTrailSegment ? trailOpacity : (config.softInternalCubeLight ? 0.85 : 1.0);
+
+      const fillMaterial = new THREE.MeshStandardMaterial({
+          color:chosenColorHex, 
+          emissive:chosenColorHex, 
+          emissiveIntensity: (config.softInternalCubeLight && !isTrailSegment) ? 0.5 : (isTrailSegment ? 0.1 : 0.2),
+          roughness: 0.6, 
+          metalness: 0.1,
+          transparent: isTransparent_embed,
+          opacity: opacity_embed
+        });
+      const cubeMesh = new THREE.Mesh(geom, fillMaterial);
+      if(!isTrailSegment) cubeMesh.castShadow = true;
+
+      const edgeGeom = new THREE.EdgesGeometry(geom);
+      const edgeMat = new THREE.LineBasicMaterial({
+          color: new THREE.Color(config.cubeEdgeColor), 
+          linewidth: getScaledCubeEdgeThickness_embed(),
+          transparent: isTransparent_embed, 
+          opacity: isTransparent_embed ? Math.min(opacity_embed, 0.7) : 1.0
+        });
+      const edgeLines = new THREE.LineSegments(edgeGeom, edgeMat);
+      const group = new THREE.Group(); group.add(cubeMesh); group.add(edgeLines);
+      group.userData = {color: chosenColorHex, isTrail: isTrailSegment};
+      if(!isTrailSegment) group.castShadow = true;
+
+      if (config.softInternalCubeLight && !isTrailSegment) {
+        const internalLight_embed = new THREE.PointLight(chosenColorHex, 0.7, s * 1.5, 2);
+        internalLight_embed.castShadow = false;
+        cubeMesh.add(internalLight_embed); 
+        group.userData.internalLight = internalLight_embed;
+      }
+      return group;
+    }
+
+    function disposeGroup_embed(group) {
+      if (!group) return;
+      group.traverse(obj => {
+        if (obj.geometry) obj.geometry.dispose();
+        if (obj.material) {
+          if (Array.isArray(obj.material)) obj.material.forEach(m => m.dispose());
+          else obj.material.dispose();
+        }
+        if (obj.isLight && typeof obj.dispose === 'function') obj.dispose();
+      });
+      group.clear();
+    }
+
+    function rebuild_embed() {
+        disposeGroup_embed(graphGroup_embed);
+        disposeGroup_embed(pulsesGroup_embed);
+        disposeGroup_embed(pulseTrailsGroup_embed);
+
+        graphGroup_embed.visible = true;
+        pulsesGroup_embed.visible = true;
+        pulseTrailsGroup_embed.visible = true;
+
+        updateBackground_embed();
+        if (starFieldGroup_embed && starFieldGroup_embed.children.length > 0 && config.backgroundMode === 'Starfield') buildStarfield_embed();
+
+        if (directionalLight_embed) {
+          directionalLight_embed.position.set(15 * config.globalScale, 20 * config.globalScale, 10 * config.globalScale);
+          directionalLight_embed.shadow.camera.left = -15 * config.globalScale;
+          directionalLight_embed.shadow.camera.right = 15 * config.globalScale;
+          directionalLight_embed.shadow.camera.top = 15 * config.globalScale;
+          directionalLight_embed.shadow.camera.bottom = -15 * config.globalScale;
+          directionalLight_embed.shadow.camera.far = 50 * config.globalScale;
+          directionalLight_embed.shadow.camera.updateProjectionMatrix();
+        }
+        if (hemisphereLight_embed) {
+          hemisphereLight_embed.position.set(0, 20 * config.globalScale, 0);
+        }
+        if (camera_embed) {
+          let zPosition = 15 * config.globalScale;
+          if (config.radius > 5) zPosition = 20 * config.globalScale;
+          camera_embed.position.set(10 * config.globalScale, 10 * config.globalScale, zPosition);
+          camera_embed.lookAt(0,0,0);
+        }
+
+        buildGraph_embed();
+        rebuildPulses_embed();
+
+        if (renderer_embed) renderer_embed.render(scene_embed, camera_embed);
+    }
+
+    function buildGraph_embed() {
+      graphGroup_embed.clear();
+      nodeMeshes_embed = []; edges_embed = [];
+      let nodePositions = [];
+      const currentRadius = getScaledRadius_embed();
+      const currentNodeSize = getScaledNodeSize_embed();
+      const currentLineThickness = getScaledLineThickness_embed();
+      const platonicSolidVertexCounts = [4, 6, 8, 12, 20];
+      const isPlatonic = platonicSolidVertexCounts.includes(config.nodeCount);
+
+      if (isPlatonic) {
+        nodePositions = getPlatonicSolidVertices_embed(config.nodeCount, currentRadius);
+      } else {
+        for (let i = 0; i < config.nodeCount; i++) {
+          const phi = Math.acos(-1 + (2 * i) / config.nodeCount);
+          const theta = Math.sqrt(config.nodeCount * Math.PI) * phi;
+          nodePositions.push(new THREE.Vector3(
+            currentRadius * Math.sin(phi) * Math.cos(theta),
+            currentRadius * Math.sin(phi) * Math.sin(theta),
+            currentRadius * Math.cos(phi)
+          ));
+        }
+      }
+
+      const lineMaterial = new THREE.LineBasicMaterial({
+          color: new THREE.Color(config.lineColor),
+          linewidth: currentLineThickness
+        });
+      const nodeGeometry = new THREE.SphereGeometry(currentNodeSize, 32, 16);
+
+      nodePositions.forEach((pos, i) => {
+        const nodeMaterial = new THREE.MeshStandardMaterial({
+            color: new THREE.Color(config.nodeColor),
+            emissive: new THREE.Color(config.nodeColor),
+            emissiveIntensity: 0.3,
+            roughness: 0.5,
+            metalness: 0.2
+        });
+        const sphereMesh = new THREE.Mesh(nodeGeometry, nodeMaterial);
+        sphereMesh.position.copy(pos);
+        sphereMesh.castShadow = true;
+        graphGroup_embed.add(sphereMesh);
+        nodeMeshes_embed.push(sphereMesh);
+        for (let j = i + 1; j < nodePositions.length; j++) {
+          const lineGeometry = new THREE.BufferGeometry().setFromPoints([pos, nodePositions[j]]);
+          graphGroup_embed.add(new THREE.Line(lineGeometry, lineMaterial));
+          edges_embed.push({ from: i, to: j });
+        }
+      });
+    }
+
+    function rebuildPulses_embed() {
+      disposeGroup_embed(pulsesGroup_embed);
+      disposeGroup_embed(pulseTrailsGroup_embed);
+      pulses_embed = [];
+      if (!edges_embed.length || config.pulseCount === 0) return;
+      for (let i = 0; i < config.pulseCount; i++) {
+        const pulseCube = makeCube_embed(config.cubeInteriorColor);
+        const edge = edges_embed[Math.floor(Math.random() * edges_embed.length)];
+        pulseCube.userData = {
+            from: edge.from,
+            to: edge.to,
+            t: Math.random(),
+            color: pulseCube.userData.color,
+            internalLight: pulseCube.userData.internalLight,
+            trailSegments: []
+        };
+        updatePulsePosition_embed(pulseCube);
+        pulsesGroup_embed.add(pulseCube);
+        pulses_embed.push(pulseCube);
+      }
+    }
+
+    function updatePulsePosition_embed(pulseCube) {
+      if (nodeMeshes_embed[pulseCube.userData.from] && nodeMeshes_embed[pulseCube.userData.to]) {
+        const startNodePos = nodeMeshes_embed[pulseCube.userData.from].position;
+        const endNodePos = nodeMeshes_embed[pulseCube.userData.to].position;
+        pulseCube.position.lerpVectors(startNodePos, endNodePos, pulseCube.userData.t);
+
+        if (config.pulseTrailEnabled) {
+            const trailSegments = pulseCube.userData.trailSegments;
+            const maxTrailLength = config.pulseTrailLength;
+
+            if (trailSegments.length < maxTrailLength || Math.random() < 0.3) {
+                const trailOpacity = 1.0 - (trailSegments.length / maxTrailLength) * 0.8;
+                const trailSegment = makeCube_embed(pulseCube.userData.color, true, trailOpacity * 0.5);
+                trailSegment.position.copy(pulseCube.position);
+                trailSegment.scale.setScalar(0.5 + (trailSegments.length / maxTrailLength) * 0.5);
+                pulseTrailsGroup_embed.add(trailSegment);
+                trailSegments.unshift(trailSegment);
+            }
+
+            while (trailSegments.length > maxTrailLength) {
+                const oldSegment = trailSegments.pop();
+                pulseTrailsGroup_embed.remove(oldSegment);
+                if (oldSegment.geometry) oldSegment.geometry.dispose();
+                if (oldSegment.material) oldSegment.material.dispose();
+            }
+
+            trailSegments.forEach((segment, index) => {
+                if (segment && segment.children && segment.children.length > 0) {
+                    const cubeMesh = segment.children[0];
+                    if (cubeMesh && cubeMesh.material) {
+                        cubeMesh.material.opacity = (1.0 - (index / maxTrailLength)) * 0.4;
+                        if (cubeMesh.material.opacity <= 0.01) {
+                            pulseTrailsGroup_embed.remove(segment);
+                            segment.children.forEach(child => {
+                                if (child.geometry) child.geometry.dispose();
+                                if (child.material) child.material.dispose();
+                            });
+                            pulseCube.userData.trailSegments.splice(index, 1);
+                        }
+                    }
+                }
+            });
+        }
+      }
+    }
+
+    function updatePulse_embed(pulseCube, deltaTime) {
+      pulseCube.userData.t += config.pulseSpeed * deltaTime;
+      if (pulseCube.userData.t >= 1) {
+        const targetNodeIndex = pulseCube.userData.to;
+        const pulseActualColor = pulseCube.userData.color;
+        if (config.nodeTakesPulseColor && nodeMeshes_embed[targetNodeIndex]) {
+            const targetNodeMaterial = nodeMeshes_embed[targetNodeIndex].material;
+            targetNodeMaterial.color.setHex(pulseActualColor);
+            if (targetNodeMaterial.emissive) {
+                 targetNodeMaterial.emissive.setHex(pulseActualColor);
+            }
+        }
+        pulseCube.userData.t = 0;
+        if (pulseCube.userData.trailSegments) {
+            pulseCube.userData.trailSegments.forEach(segment => {
+                pulseTrailsGroup_embed.remove(segment);
+                if (segment.geometry) segment.geometry.dispose();
+                if (segment.material) segment.material.dispose();
+            });
+            pulseCube.userData.trailSegments = [];
+        }
+
+        const connectedEdges = edges_embed.filter(e => e.from === targetNodeIndex || e.to === targetNodeIndex);
+        let nextEdge;
+        if (connectedEdges.length > 0) {
+            nextEdge = connectedEdges[Math.floor(Math.random() * connectedEdges.length)];
+            pulseCube.userData.from = targetNodeIndex;
+            pulseCube.userData.to = (nextEdge.from === targetNodeIndex) ? nextEdge.to : nextEdge.from;
+        } else if (edges_embed.length > 0) {
+            nextEdge = edges_embed[Math.floor(Math.random() * edges_embed.length)];
+            pulseCube.userData.from = nextEdge.from;
+            pulseCube.userData.to = nextEdge.to;
+        } else { return; }
+      }
+      updatePulsePosition_embed(pulseCube);
+    }
+
+
+    function animate_embed() {
+      animationFrameId_embed = requestAnimationFrame(animate_embed);
+      const dt = clock_embed.getDelta();
+      const time_embed = clock_embed.getElapsedTime();
+
+      pulses_embed.forEach(p => updatePulse_embed(p, dt));
+
+      if (config.nodePulsationEnabled && nodeMeshes_embed.length > 0) {
+        nodeMeshes_embed.forEach(node => {
+            const scale = 1 + Math.sin(time_embed * config.nodePulsationSpeed * 5 + node.id * 0.5) * config.nodePulsationAmount;
+            node.scale.set(scale, scale, scale);
+        });
+      } else if (!config.nodePulsationEnabled && nodeMeshes_embed.length > 0) {
+          nodeMeshes_embed.forEach(node => node.scale.set(1,1,1));
+      }
+
+      if (config.cameraAutoRotate) {
+          camera_embed.position.x = Math.sin(time_embed * config.cameraAutoRotateSpeed) * (15 * config.globalScale);
+          camera_embed.position.z = Math.cos(time_embed * config.cameraAutoRotateSpeed) * (15 * config.globalScale);
+          camera_embed.lookAt(scene_embed.position);
+      }
+      
+      graphGroup_embed.rotation.x += config.rotationXIncrement; 
+      graphGroup_embed.rotation.y += config.rotationYIncrement; 
+      graphGroup_embed.rotation.z += config.rotationZIncrement; 
+      pulsesGroup_embed.rotation.copy(graphGroup_embed.rotation);
+      if(pulseTrailsGroup_embed) pulseTrailsGroup_embed.rotation.copy(graphGroup_embed.rotation);
+
+
+      renderer_embed.render(scene_embed, camera_embed);
+    }
+
+    function onResize_embed() {
+      const container = document.getElementById('simulation-canvas-container');
+      if (camera_embed && renderer_embed && container) {
+        camera_embed.aspect = container.clientWidth / container.clientHeight;
+        camera_embed.updateProjectionMatrix();
+        renderer_embed.setSize(container.clientWidth, container.clientHeight);
+        renderer_embed.render(scene_embed, camera_embed);
+      }
+    }
+
+    // --- BEGIN SIMULATION API ---
+    window.simulationAPI = {
+      updateConfig: function(newConfigUpdates) {
+        if (typeof newConfigUpdates !== 'object') return;
+        Object.assign(config, newConfigUpdates);
+        rebuild_embed();
+      },
+      // ... all individual setters, including new ones like setSoftInternalCubeLight, setPulseTrailEnabled etc.
+      setSoftInternalCubeLight: function(value) { this.updateConfig({ softInternalCubeLight: value }); },
+      setPulseTrailEnabled: function(value) { this.updateConfig({ pulseTrailEnabled: value }); },
+      setPulseTrailLength: function(value) { this.updateConfig({ pulseTrailLength: value }); },
+      setCubeEdgeColor: function(value) { this.updateConfig({ cubeEdgeColor: value }); },
+      setCubeEdgeThickness: function(value) { this.updateConfig({ cubeEdgeThickness: value }); },
+      setBackgroundMode: function(value) { this.updateConfig({ backgroundMode: value }); },
+      setBackgroundColor: function(value) { this.updateConfig({ backgroundColor: value }); },
+      setCameraAutoRotate: function(value) { this.updateConfig({ cameraAutoRotate: value }); },
+      setCameraAutoRotateSpeed: function(value) { this.updateConfig({ cameraAutoRotateSpeed: value }); },
+      setNodePulsationEnabled: function(value) { this.updateConfig({ nodePulsationEnabled: value }); },
+      setNodePulsationSpeed: function(value) { this.updateConfig({ nodePulsationSpeed: value }); },
+      setNodePulsationAmount: function(value) { this.updateConfig({ nodePulsationAmount: value }); },
+      
+      // Existing setters
+      setGlobalScale: function(value) { this.updateConfig({ globalScale: value }); },
+      setNodeCount: function(value) { this.updateConfig({ nodeCount: value }); },
+      setNodeColor: function(hexString) { this.updateConfig({ nodeColor: hexString }); },
+      setLineColor: function(hexString) { this.updateConfig({ lineColor: hexString }); },
+      setLineThickness: function(value) { this.updateConfig({ lineThickness: value }); },
+      setRadius: function(value) { this.updateConfig({ radius: value }); },
+      setNodeSize: function(value) { this.updateConfig({ nodeSize: value }); },
+      setCubeSize: function(value) { this.updateConfig({ cubeSize: value }); },
+      setPulseCount: function(value) { this.updateConfig({ pulseCount: value }); },
+      setPulseSpeed: function(value) { this.updateConfig({ pulseSpeed: value }); },
+      setRotationXIncrement: function(value) { this.updateConfig({ rotationXIncrement: value }); },
+      setRotationYIncrement: function(value) { this.updateConfig({ rotationYIncrement: value }); },
+      setRotationZIncrement: function(value) { this.updateConfig({ rotationZIncrement: value }); },
+      setCubeInteriorColor: function(hexString) { this.updateConfig({ cubeInteriorColor: hexString }); },
+      setRandomCubeColor: function(booleanValue) { this.updateConfig({ randomCubeColor: booleanValue }); },
+      setNodeTakesPulseColor: function(booleanValue) { this.updateConfig({ nodeTakesPulseColor: booleanValue }); },
+      getCurrentConfig: function() { return JSON.parse(JSON.stringify(config)); }
+    };
+    // --- END SIMULATION API ---
+
+    if (document.readyState === 'loading') { document.addEventListener('DOMContentLoaded', init_embed); } 
+    else { init_embed(); }
+    
+    window.cleanupSimulation = () => {
+      if (animationFrameId_embed) cancelAnimationFrame(animationFrameId_embed);
+      window.removeEventListener('resize', onResize_embed);
+      disposeGroup_embed(graphGroup_embed);
+      disposeGroup_embed(pulsesGroup_embed);
+      disposeGroup_embed(pulseTrailsGroup_embed);
+      disposeGroup_embed(starFieldGroup_embed);
+      if (renderer_embed) {
+        renderer_embed.dispose();
+        if (renderer_embed.domElement && renderer_embed.domElement.parentNode) {
+          renderer_embed.domElement.parentNode.removeChild(renderer_embed.domElement);
+        }
+      }
+      scene_embed = null;
+      camera_embed = null;
+      renderer_embed = null;
+      nodeMeshes_embed = [];
+      edges_embed = [];
+      pulses_embed = [];
+    };
+  <\/script> 
+</body>
+  </html>
+  `;
+
+    const codeOutputTextarea = document.getElementById('generatedCodeOutput');
+    const codeContainerDiv = document.getElementById('generatedCodeContainer');
+    
+    codeOutputTextarea.value = generatedCode; // Ensure this contains the fully fleshed-out template
+    codeContainerDiv.style.display = 'block';
+
+    if (params.debug) console.log("Generated embeddable app code is ready in the text area on the page.");
+    alert("Generated embeddable app code is now available in the text area on the page. You can copy it from there.");
+}
+</script>
+</body>
+</html>
+

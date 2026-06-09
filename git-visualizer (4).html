@@ -1,0 +1,744 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Git — The Package Room</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  background: #bdd0e4;
+  font-family: 'Inter', sans-serif;
+  display: flex; flex-direction: column;
+  align-items: center; padding: 1.5rem 1rem;
+  min-height: 100vh;
+}
+#wrap { position: relative; width: 900px; }
+#mount {
+  width: 900px; height: 580px;
+  border-radius: 16px; overflow: hidden;
+}
+#hud {
+  position: absolute; bottom: 68px; left: 20px;
+  z-index: 10; pointer-events: none;
+}
+.hud-row {
+  display: flex; align-items: center; gap: 8px;
+  padding: 5px 13px;
+  background: rgba(255,255,255,0.55);
+  border: 1px solid rgba(255,255,255,0.7);
+  border-radius: 6px; font-size: 11.5px;
+  font-family: 'Fira Code', monospace;
+  color: #1a2a3a; letter-spacing: 0.01em;
+  backdrop-filter: blur(8px);
+  opacity: 0; transform: translateY(5px);
+  transition: opacity .28s, transform .28s cubic-bezier(.22,1,.36,1);
+  margin-bottom: 4px; white-space: nowrap;
+}
+.hud-row.show { opacity: 1; transform: translateY(0); }
+.prompt { color: #2a6a4a; }
+.cmd-txt { color: #1a3a6a; }
+.sub-txt { color: #5a7a9a; font-size: 10.5px; }
+#bar {
+  display: flex; align-items: center;
+  justify-content: space-between;
+  padding: 10px 4px 0;
+}
+.btn {
+  padding: 7px 16px; background: rgba(255,255,255,0.5);
+  border: 1px solid rgba(255,255,255,0.8);
+  border-radius: 8px; color: #2a4a6a;
+  font-family: 'Inter', sans-serif; font-size: 12px;
+  font-weight: 500; cursor: pointer;
+  backdrop-filter: blur(8px);
+  transition: all .18s;
+}
+.btn:hover:not(:disabled) {
+  background: rgba(255,255,255,0.75);
+  color: #0a2a4a;
+}
+.btn:disabled { opacity: 0.35; cursor: not-allowed; }
+.dots { display: flex; gap: 8px; align-items: center; }
+.dot {
+  width: 5px; height: 5px; border-radius: 50%;
+  background: rgba(30,60,100,0.18);
+  transition: all .35s;
+}
+.dot.on { background: rgba(30,60,120,0.65); }
+.dot.done { background: rgba(30,100,60,0.5); }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div id="mount"></div>
+  <div id="hud">
+    <div class="hud-row" id="row1"><span class="prompt">$</span>&nbsp;<span class="cmd-txt" id="cmd"></span></div>
+    <div class="hud-row" id="row2"><span class="sub-txt" id="sub"></span></div>
+  </div>
+  <div id="bar">
+    <button class="btn" id="replay" disabled>▶ Replay</button>
+    <div class="dots" id="dots"></div>
+    <button class="btn" id="camreset">Reset cam</button>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script>
+'use strict';
+
+// ════════════════════════════════════════════════
+//  GIT VISUALIZER — CLAY RENDER
+//  Single hue. Shadows define form. Vectr-style.
+// ════════════════════════════════════════════════
+
+const W = 900, H = 580;
+const mount = document.getElementById('mount');
+
+// ── Renderer ──────────────────────────────────────
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(W, H);
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.05;
+renderer.outputEncoding = THREE.sRGBEncoding;
+mount.appendChild(renderer.domElement);
+
+// ── Scene ─────────────────────────────────────────
+const scene = new THREE.Scene();
+const BG = new THREE.Color(0xbdd0e4);
+scene.background = BG;
+// Subtle atmospheric haze — matches background
+scene.fog = new THREE.Fog(0xbdd0e4, 22, 42);
+
+// ── Camera presets ────────────────────────────────
+// Matching the Vectr steep isometric angle
+const CAM = {
+  // Opening: tight on code cards (slightly above, in front)
+  close:  { pos: [-2.2, 1.3,  2.6 ], tgt: [-4.3, 1.0,  0.1 ] },
+  // Pull back to mid — desk + staging visible
+  mid:    { pos: [-0.5, 7.0,  9.5 ], tgt: [-0.5, 0.0,  0.0 ] },
+  // Box focus
+  box:    { pos: [-1.2, 5.0,  7.0 ], tgt: [-1.4, 0.2,  0.0 ] },
+  // Wide diorama — full scene, isometric-ish
+  wide:   { pos: [ 0.0, 8.5, 11.5 ], tgt: [ 0.2, 0.0,  0.0 ] },
+  // Pull phase — rack side
+  pull:   { pos: [ 1.5, 8.0, 11.0 ], tgt: [ 1.5, 0.0,  0.0 ] },
+};
+
+const camera = new THREE.PerspectiveCamera(42, W / H, 0.1, 80);
+camera.position.set(...CAM.wide.pos);
+
+const controls = new THREE.OrbitControls(camera, renderer.domElement);
+controls.target.set(...CAM.wide.tgt);
+controls.enableDamping = true;
+controls.dampingFactor = 0.07;
+controls.minPolarAngle = 0.1;
+controls.maxPolarAngle = 1.48;
+controls.minDistance = 2;
+controls.maxDistance = 30;
+controls.update();
+
+// ── Lights ────────────────────────────────────────
+// KEY INSIGHT: ambient dominates — directional is only for shadow casting
+// This creates the even, clay-render look where shadows are subtle
+
+// Warm ambient — fills the scene evenly
+const ambient = new THREE.AmbientLight(0xd4e4f4, 1.05);
+scene.add(ambient);
+
+// Hemisphere — sky warm, ground slightly cooler
+const hemi = new THREE.HemisphereLight(0xdce8f8, 0xa8c0d8, 0.45);
+scene.add(hemi);
+
+// Primary directional — positioned for clean shadow direction (upper-left-front)
+const sun = new THREE.DirectionalLight(0xffffff, 0.7);
+sun.position.set(-5, 12, 6);
+sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+sun.shadow.camera.near   =  0.5;
+sun.shadow.camera.far    = 35;
+sun.shadow.camera.left   = -14;
+sun.shadow.camera.right  =  12;
+sun.shadow.camera.top    =  10;
+sun.shadow.camera.bottom =  -8;
+sun.shadow.bias = -0.0003;
+scene.add(sun);
+
+// Subtle cool fill from opposite side — prevents harsh shadow edges
+const fill = new THREE.DirectionalLight(0xe8f0ff, 0.18);
+fill.position.set(6, 4, -4);
+scene.add(fill);
+
+// ── THE SINGLE CLAY MATERIAL ──────────────────────
+// Everything in the scene uses variations of this one hue.
+// All roughness: 1.0. All metalness: 0. Form = shadow only.
+
+function clay(lightness) {
+  // lightness: -1 (darkest) to +1 (lightest), 0 = base
+  // Base hue: hsl(210, 35%, 82%) = #bdd0e4
+  const base = [189, 208, 228]; // rgb of base
+  const shift = lightness * 24;
+  const r = Math.round(Math.min(255, Math.max(0, base[0] + shift)));
+  const g = Math.round(Math.min(255, Math.max(0, base[1] + shift)));
+  const b = Math.round(Math.min(255, Math.max(0, base[2] + shift)));
+  return new THREE.MeshStandardMaterial({
+    color: new THREE.Color(r/255, g/255, b/255),
+    roughness: 1.0,
+    metalness: 0.0,
+  });
+}
+
+// Material aliases — all clay, just different lightness steps
+const M = {
+  floor:     clay(-0.6),  // darker — catches shadows visibly
+  platform:  clay(-0.2),  // staging pad
+  desk:      clay(+0.6),  // desk surface — lightest object
+  deskLegs:  clay(-0.1),
+  boxWall:   clay(+0.9),  // box = nearly white — stands out in blue world
+  boxLid:    clay(+0.7),
+  tape:      null, // handled separately — one warm accent
+  conveyor:  clay(-0.4),  // conveyor frame — dark steel-like
+  belt:      clay(-0.6),  // belt — darkest surface
+  rack:      clay(-0.2),  // rack body
+  rackUnit:  clay(-0.5),  // unit panels — recessed, darker
+  ledOff:    clay(-0.3),
+  ledOn:     new THREE.MeshStandardMaterial({
+    color: 0xaaddcc, roughness: 1.0, metalness: 0,
+    emissive: 0x44aa88, emissiveIntensity: 0.4 // very subtle in clay world
+  }),
+};
+
+// Tape: the one non-blue element — warm cream. Barely an accent.
+M.tape = new THREE.MeshStandardMaterial({
+  color: 0xe8d8a8, roughness: 1.0, metalness: 0,
+  transparent: true, opacity: 0
+});
+
+// ── Floor ─────────────────────────────────────────
+const floor = new THREE.Mesh(new THREE.PlaneGeometry(40, 22), M.floor);
+floor.rotation.x = -Math.PI / 2;
+floor.position.y = -0.01;
+floor.receiveShadow = true;
+scene.add(floor);
+
+// ── Desk ─────────────────────────────────────────
+const DESK_TOP_Y = 0.55;
+const deskGrp = new THREE.Group();
+
+const deskSrf = new THREE.Mesh(new THREE.BoxGeometry(2.6, 0.06, 1.9), M.desk);
+deskSrf.position.y = 0.52; deskSrf.castShadow = true; deskSrf.receiveShadow = true;
+deskGrp.add(deskSrf);
+
+// Legs — thin, clean
+const legG = new THREE.BoxGeometry(0.048, 0.49, 0.048);
+[[-1.22,-0.88],[1.22,-0.88],[-1.22,0.88],[1.22,0.88]].forEach(([x,z]) => {
+  const l = new THREE.Mesh(legG, M.deskLegs);
+  l.position.set(x, 0.245, z); l.castShadow = true; deskGrp.add(l);
+});
+deskGrp.position.set(-4.0, 0, 0);
+scene.add(deskGrp);
+
+// Monitor — just a clean clay slab
+{
+  const mG = new THREE.Group();
+  mG.add(new THREE.Mesh(new THREE.BoxGeometry(0.58, 0.38, 0.04), clay(+0.3)));
+  const st = new THREE.Mesh(new THREE.BoxGeometry(0.035, 0.2, 0.035), M.deskLegs);
+  st.position.y = -0.19; mG.add(st);
+  const sb = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.02, 0.14), M.deskLegs);
+  sb.position.y = -0.3; mG.add(sb);
+  mG.position.set(-4.88, DESK_TOP_Y + 0.21, -0.72);
+  mG.rotation.y = 0.15;
+  mG.traverse(c => { if (c.isMesh) { c.castShadow = true; c.receiveShadow = true; } });
+  scene.add(mG);
+}
+
+// Staging pad — subtle zone marker
+const stagePad = new THREE.Mesh(new THREE.BoxGeometry(1.38, 0.01, 1.38), M.platform);
+stagePad.position.set(-1.45, 0.003, 0.05); stagePad.receiveShadow = true;
+scene.add(stagePad);
+
+// ── Conveyor ──────────────────────────────────────
+const BELT_Y = 0.26; // belt top surface height
+const convGrp = new THREE.Group();
+
+// Belt surface — flat, dark
+const beltSurf = new THREE.Mesh(new THREE.BoxGeometry(5.2, 0.055, 1.1), M.belt);
+beltSurf.castShadow = true; beltSurf.receiveShadow = true;
+convGrp.add(beltSurf);
+
+// Side rails
+[-0.58, 0.58].forEach(z => {
+  const r = new THREE.Mesh(new THREE.BoxGeometry(5.2, 0.08, 0.05), M.conveyor);
+  r.position.set(0, 0.02, z); r.castShadow = true; convGrp.add(r);
+});
+
+// End rollers
+[-2.6, 2.6].forEach(x => {
+  const rol = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 1.1, 12), M.conveyor);
+  rol.position.x = x; rol.rotation.z = Math.PI / 2; convGrp.add(rol);
+});
+
+// Legs
+[[-2.0,-0.44],[-2.0,0.44],[2.0,-0.44],[2.0,0.44]].forEach(([x,z]) => {
+  const l = new THREE.Mesh(new THREE.BoxGeometry(0.044, 0.4, 0.044), M.conveyor);
+  l.position.set(x, -0.23, z); l.castShadow = true; convGrp.add(l);
+});
+
+convGrp.position.set(1.5, BELT_Y - 0.028, 0);
+scene.add(convGrp);
+
+// ── Server Rack ───────────────────────────────────
+const RW = 1.35, RH = 3.0, RD = 0.86;
+const rackGrp = new THREE.Group();
+
+// Main body
+const rackBody = new THREE.Mesh(new THREE.BoxGeometry(RW, RH, RD), M.rack);
+rackBody.castShadow = true; rackBody.receiveShadow = true;
+rackGrp.add(rackBody);
+
+// Rail strips — slightly darker vertical strips
+[RW/2 - 0.05, -(RW/2 - 0.05)].forEach(x => {
+  const r = new THREE.Mesh(new THREE.BoxGeometry(0.04, RH - 0.05, RD + 0.01), M.conveyor);
+  r.position.x = x; rackGrp.add(r);
+});
+
+// Rack units — recessed panels
+const NUM_UNITS = 16, UH = 0.09, UG = 0.02;
+const leds = [];
+for (let i = 0; i < NUM_UNITS; i++) {
+  const y = RH/2 - 0.1 - i * (UH + UG);
+  const panel = new THREE.Mesh(
+    new THREE.BoxGeometry(RW - 0.12, UH, RD * 0.25),
+    M.rackUnit.clone()
+  );
+  panel.position.set(0, y, RD/2 - RD*0.125); rackGrp.add(panel);
+
+  // Tiny LED dot — barely visible in clay world
+  const led = new THREE.Mesh(new THREE.SphereGeometry(0.008, 6, 6), M.ledOff.clone());
+  led.position.set(RW/2 - 0.18, y, RD/2 + 0.001);
+  rackGrp.add(led); leds.push(led);
+}
+
+rackGrp.position.set(4.8, RH/2, 0);
+scene.add(rackGrp);
+
+// A few LEDs on as idle state
+[0, 3, 7, 12].forEach(i => { if (leds[i]) leds[i].material = M.ledOn.clone(); });
+
+// ── Code snippet cards ────────────────────────────
+// THESE are the one non-clay element — white screens in a blue-gray world
+const FILE_DEFS = [
+  { name: 'index.js',   ext: 'js'  },
+  { name: 'styles.css', ext: 'css' },
+  { name: 'api.ts',     ext: 'ts'  },
+];
+const CW = 1.28, CH = 0.88;
+const CARD_POS = [
+  new THREE.Vector3(-4.88, DESK_TOP_Y + 0.52, -0.50),
+  new THREE.Vector3(-4.18, DESK_TOP_Y + 0.67, 0.12),
+  new THREE.Vector3(-4.62, DESK_TOP_Y + 0.48, 0.68),
+];
+const CARD_ROT = [
+  { x: -0.04, y: 0.36, z: -0.018 },
+  { x: -0.03, y: 0.16, z:  0.010 },
+  { x: -0.04, y:-0.06, z:  0.018 },
+];
+
+// GitHub Light theme — clean, readable at close-up
+const G = {
+  bg: '#ffffff', tab: '#f6f8fa', border: '#d0d7de',
+  txt: '#1f2328', num: '#8b949e',
+  kw: '#cf222e', str: '#0a3069', fn: '#8250df',
+  tag: '#116329', attr: '#0550ae', type: '#953800',
+};
+const CODE = {
+  js: [
+    [{c:G.kw,t:'import'},{c:G.txt,t:' { '},{c:G.fn,t:'useState'},{c:G.txt,t:', '},{c:G.fn,t:'useEffect'},{c:G.txt,t:' }'}],
+    [{c:G.kw,t:'from '},{c:G.str,t:"'react'"}],
+    [{c:G.kw,t:'import'},{c:G.fn,t:' Router'},{c:G.kw,t:' from '},{c:G.str,t:"'next/router'"}],
+    [],
+    [{c:G.kw,t:'const'},{c:G.txt,t:' App = () => {'}],
+    [{c:G.kw,t:'  const'},{c:G.txt,t:' [data, setData]'}],
+    [{c:G.txt,t:'    = '},{c:G.fn,t:'useState'},{c:G.txt,t:'(null)'}],
+    [],
+    [{c:G.kw,t:'  return'},{c:G.txt,t:' ('}],
+    [{c:G.txt,t:'    <'},{c:G.tag,t:'div'},{c:G.txt,t:' className='},{c:G.str,t:'"app"'},{c:G.txt,t:'>'}],
+    [{c:G.txt,t:'      <'},{c:G.tag,t:'Header'},{c:G.txt,t:' data={data} />'}],
+    [{c:G.txt,t:'      <'},{c:G.tag,t:'main'},{c:G.txt,t:'>{ data }</'},{c:G.tag,t:'main'},{c:G.txt,t:'>'}],
+    [{c:G.txt,t:'    </'},{c:G.tag,t:'div'},{c:G.txt,t:'> )'}],
+    [{c:G.txt,t:'};'}],
+  ],
+  css: [
+    [{c:G.tag,t:':root'},{c:G.txt,t:' {'}],
+    [{c:G.attr,t:'  --primary'},{c:G.txt,t:': '},{c:G.attr,t:'#2563eb'},{c:G.txt,t:';'}],
+    [{c:G.attr,t:'  --bg'},{c:G.txt,t:': '},{c:G.attr,t:'#0f172a'},{c:G.txt,t:';'}],
+    [{c:G.attr,t:'  --radius'},{c:G.txt,t:': '},{c:G.attr,t:'8px'},{c:G.txt,t:';'}],
+    [{c:G.txt,t:'}'}],[],
+    [{c:G.tag,t:'.container'},{c:G.txt,t:' {'}],
+    [{c:G.attr,t:'  display'},{c:G.txt,t:': '},{c:G.type,t:'flex'},{c:G.txt,t:';'}],
+    [{c:G.attr,t:'  gap'},{c:G.txt,t:': '},{c:G.attr,t:'1.5rem'},{c:G.txt,t:';'}],
+    [{c:G.attr,t:'  padding'},{c:G.txt,t:': '},{c:G.attr,t:'2rem'},{c:G.txt,t:';'}],
+    [{c:G.attr,t:'  border-radius'},{c:G.txt,t:': var(--radius);'}],
+    [{c:G.txt,t:'}'}],[],
+    [{c:G.tag,t:'@media'},{c:G.txt,t:' (max-width: '},{c:G.attr,t:'768px'},{c:G.txt,t:') {'}],
+    [{c:G.attr,t:'  .container'},{c:G.txt,t:' { flex-direction: column }'}],
+  ],
+  ts: [
+    [{c:G.kw,t:'interface '},{c:G.type,t:'ApiResponse'},{c:G.txt,t:'<T> {'}],
+    [{c:G.attr,t:'  data'},{c:G.txt,t:': T;'}],
+    [{c:G.attr,t:'  status'},{c:G.txt,t:': '},{c:G.type,t:'number'},{c:G.txt,t:';'}],
+    [{c:G.attr,t:'  error'},{c:G.txt,t:'?: '},{c:G.type,t:'string'},{c:G.txt,t:';'}],
+    [{c:G.attr,t:'  timestamp'},{c:G.txt,t:': '},{c:G.type,t:'Date'},{c:G.txt,t:';'}],
+    [{c:G.txt,t:'}'}],[],
+    [{c:G.kw,t:'export async function '},{c:G.fn,t:'fetchData'}],
+    [{c:G.txt,t:'  <T>(url: '},{c:G.type,t:'string'},{c:G.txt,t:')'}],
+    [{c:G.txt,t:'  : '},{c:G.type,t:'Promise'},{c:G.txt,t:'<ApiResponse<T>> {'}],
+    [{c:G.kw,t:'  const'},{c:G.txt,t:' res = '},{c:G.kw,t:'await'},{c:G.txt,t:' fetch(url)'}],
+    [{c:G.kw,t:'  if'},{c:G.txt,t:' (!res.ok) '},{c:G.kw,t:'throw'},{c:G.txt,t:' new Error(res.statusText)'}],
+    [{c:G.kw,t:'  return'},{c:G.txt,t:' res.'},{c:G.fn,t:'json'},{c:G.txt,t:'()'}],
+    [{c:G.txt,t:'}'}],
+  ],
+};
+
+function makeCardTex(def) {
+  const TW = 400, TH = 268;
+  const cvs = document.createElement('canvas');
+  cvs.width = TW; cvs.height = TH;
+  const ctx = cvs.getContext('2d');
+  // White editor — stands out against blue-gray world
+  ctx.fillStyle = G.bg; ctx.fillRect(0, 0, TW, TH);
+  ctx.fillStyle = G.tab; ctx.fillRect(0, 0, TW, 24);
+  ctx.fillStyle = G.bg; ctx.fillRect(0, 0, 114, 24);
+  ctx.fillStyle = G.border; ctx.fillRect(0, 23, TW, 1);
+  ctx.fillStyle = G.bg; ctx.fillRect(0, 23, 114, 1);
+  const dotCol = { js: '#e8a020', css: '#4772b3', ts: '#3178c6' }[def.ext];
+  ctx.beginPath(); ctx.arc(97, 12, 3.5, 0, Math.PI*2);
+  ctx.fillStyle = dotCol; ctx.fill();
+  ctx.fillStyle = G.txt; ctx.font = '11px monospace';
+  ctx.fillText(def.name, 9, 16);
+  ctx.fillStyle = G.tab; ctx.fillRect(0, 24, 28, TH-24);
+  ctx.fillStyle = G.border; ctx.fillRect(28, 24, 1, TH-24);
+  ctx.font = '11px monospace';
+  (CODE[def.ext]||[]).forEach((tokens, i) => {
+    const y = 38 + i * 14;
+    if (y > TH-5 || !tokens||!tokens.length) return;
+    ctx.fillStyle = G.num; ctx.fillText(i+1, 4, y);
+    let x = 34;
+    tokens.forEach(tok => {
+      ctx.fillStyle = tok.c; ctx.fillText(tok.t, x, y);
+      x += ctx.measureText(tok.t).width;
+    });
+  });
+  const t = new THREE.CanvasTexture(cvs);
+  t.encoding = THREE.sRGBEncoding;
+  return t;
+}
+
+let cards = [];
+function spawnCards() {
+  FILE_DEFS.forEach((def, i) => {
+    const tex = makeCardTex(def);
+    const mat = new THREE.MeshStandardMaterial({
+      map: tex, roughness: 0.08, metalness: 0,
+      transparent: true, opacity: 0,
+    });
+    const mesh = new THREE.Mesh(new THREE.PlaneGeometry(CW, CH), mat);
+    mesh.position.copy(CARD_POS[i]);
+    mesh.rotation.set(CARD_ROT[i].x, CARD_ROT[i].y, CARD_ROT[i].z);
+    mesh.castShadow = true;
+    // Thin clay bezel — makes it read as a physical device in the clay world
+    const bezel = new THREE.Mesh(
+      new THREE.BoxGeometry(CW+0.016, CH+0.016, 0.007), clay(+0.2));
+    bezel.material.transparent = true; bezel.material.opacity = 0;
+    bezel.position.z = -0.005; mesh.add(bezel);
+    scene.add(mesh);
+    cards.push({ mesh, mat, bezelMat: bezel.material,
+                 baseY: CARD_POS[i].y, baseRz: CARD_ROT[i].z });
+  });
+}
+
+// ── Box ───────────────────────────────────────────
+let boxGrp = null, lidPivot = null, tapeMesh = null;
+function buildBox() {
+  if (boxGrp) { scene.remove(boxGrp); boxGrp = null; }
+  boxGrp = new THREE.Group();
+  const BW=1.08, BH=0.82, BD=0.94, BT=0.034;
+  const p = (w,h,d,x,y,z,m) => {
+    const mesh = new THREE.Mesh(new THREE.BoxGeometry(w,h,d), m);
+    mesh.position.set(x,y,z);
+    mesh.castShadow = true; mesh.receiveShadow = true;
+    boxGrp.add(mesh);
+  };
+  p(BW,BT,BD, 0,0,0,        M.boxWall);
+  p(BW,BH,BT, 0,BH/2,BD/2,  M.boxWall);
+  p(BW,BH,BT, 0,BH/2,-BD/2, M.boxWall);
+  p(BT,BH,BD, -BW/2,BH/2,0, M.boxWall);
+  p(BT,BH,BD, BW/2,BH/2,0,  M.boxWall);
+  // Flaps
+  const fL = new THREE.Mesh(new THREE.BoxGeometry(BW/2-0.01,BT,BD/2-0.01), M.boxLid);
+  fL.position.set(-BW/4,BH+BT/2,-BD/4); fL.castShadow=true; boxGrp.add(fL);
+  const fR = fL.clone(); fR.position.x=BW/4; boxGrp.add(fR);
+  // Lid
+  lidPivot = new THREE.Group();
+  lidPivot.position.set(0, BH+BT/2, -BD/2);
+  const lid = new THREE.Mesh(new THREE.BoxGeometry(BW,BT,BD), M.boxLid);
+  lid.position.set(0,0,BD/2); lid.castShadow=true; lidPivot.add(lid);
+  lidPivot.rotation.x = -Math.PI*0.78;
+  boxGrp.add(lidPivot);
+  // Tape — warm cream accent
+  tapeMesh = new THREE.Mesh(
+    new THREE.BoxGeometry(BW+0.01,0.005,0.13), M.tape.clone());
+  tapeMesh.position.set(0,BH+BT+0.001,0);
+  boxGrp.add(tapeMesh);
+  boxGrp.visible = false;
+  boxGrp.position.set(-1.45, 0.02, 0.05);
+  scene.add(boxGrp);
+}
+buildBox();
+
+// ── Utilities ─────────────────────────────────────
+const wait = ms => new Promise(r => setTimeout(r, ms));
+function tween(ms, fn, ease='cubicOut') {
+  const EF = {
+    cubicOut:   t => 1-(1-t)**3,
+    cubicIn:    t => t**3,
+    linear:     t => t,
+    sineInOut:  t => -(Math.cos(Math.PI*t)-1)/2,
+    elasticOut: t => t===0?0:t===1?1:(2**(-10*t))*Math.sin((t*10-0.75)*(2*Math.PI/3))+1,
+  };
+  const ef = EF[ease]||(t=>t);
+  return new Promise(r => {
+    const s = performance.now();
+    const tick = () => {
+      const p = Math.min((performance.now()-s)/ms,1);
+      fn(p,ef(p)); p<1?requestAnimationFrame(tick):r();
+    };
+    tick();
+  });
+}
+function moveCam(pos, tgt, ms=900) {
+  const fp=camera.position.clone(), ft=controls.target.clone();
+  const tp=new THREE.Vector3(...pos), tt=new THREE.Vector3(...tgt);
+  return tween(ms,((_,e)=>{
+    camera.position.lerpVectors(fp,tp,e);
+    controls.target.lerpVectors(ft,tt,e);
+  }),'cubicOut');
+}
+const row1=document.getElementById('row1'), row2=document.getElementById('row2');
+const cmdEl=document.getElementById('cmd'), subEl=document.getElementById('sub');
+function setCmd(cmd,sub='') {
+  cmdEl.textContent=cmd; row1.classList.toggle('show',!!cmd);
+  subEl.textContent=sub; row2.classList.toggle('show',!!sub);
+}
+const replayBtn=document.getElementById('replay'), camResetBtn=document.getElementById('camreset');
+const dotsEl=document.getElementById('dots');
+['init','add','commit','push','pull'].forEach(()=>{
+  const d=document.createElement('div'); d.className='dot'; dotsEl.appendChild(d);
+});
+const dotEls=Array.from(dotsEl.querySelectorAll('.dot'));
+function setPhase(n){ dotEls.forEach((d,i)=>{ d.className='dot'+(i<n?' done':i===n?' on':''); }); }
+async function blinkLed(idx,on,times=3){
+  for(let i=0;i<times;i++){
+    if(leds[idx]) leds[idx].material=(on?M.ledOn:M.ledOff).clone();
+    await wait(140);
+    if(leds[idx]) leds[idx].material=M.ledOff.clone();
+    await wait(90);
+  }
+  if(leds[idx]) leds[idx].material=(on?M.ledOn:M.ledOff).clone();
+}
+let beltActive=false, beltDir=1, beltAngle=0;
+
+// ═══════════════════════════════════════════════════
+//  SEQUENCE
+// ═══════════════════════════════════════════════════
+async function runSequence() {
+  replayBtn.disabled = true;
+  cards.forEach(c=>scene.remove(c.mesh)); cards=[];
+  buildBox();
+  leds.forEach((l,i)=>{ l.material=[0,3,7,12].includes(i)?M.ledOn.clone():M.ledOff.clone(); });
+  beltActive=false; beltDir=1;
+  setPhase(-1); setCmd('');
+
+  // Open tight on code cards
+  camera.position.set(...CAM.close.pos);
+  controls.target.set(...CAM.close.tgt);
+  controls.update();
+
+  // ── Phase 0: White code cards emerge in blue world ──
+  setPhase(0);
+  spawnCards();
+  await tween(1100, (_, e) => {
+    cards.forEach((c,i) => {
+      const t = Math.max(0, Math.min(1, e*1.5 - i*0.22));
+      c.mat.opacity = t*0.97;
+      c.bezelMat.opacity = t*0.9;
+    });
+  });
+  setCmd('', '3 unsaved files — working directory');
+  await wait(2200);
+
+  // ── Phase 1: git add — camera reveals desk ──
+  setPhase(1);
+  setCmd('git add .', 'staging files...');
+  moveCam(CAM.mid.pos, CAM.mid.tgt, 1200);
+  await wait(500);
+
+  boxGrp.visible=true; boxGrp.scale.setScalar(0.01);
+  await tween(520,((_,e)=>boxGrp.scale.setScalar(e)),'elasticOut');
+  await wait(280);
+
+  for(let i=0;i<cards.length;i++){
+    const c=cards[i];
+    const sp=c.mesh.position.clone();
+    const sr={x:c.mesh.rotation.x,y:c.mesh.rotation.y,z:c.mesh.rotation.z};
+    const ep=new THREE.Vector3(-1.45, 0.64-i*0.05, 0.05-i*0.06);
+    await tween(700,(p,e)=>{
+      c.mesh.position.x=sp.x+(ep.x-sp.x)*e;
+      c.mesh.position.y=sp.y+(ep.y-sp.y)*e+Math.sin(p*Math.PI)*0.7;
+      c.mesh.position.z=sp.z+(ep.z-sp.z)*e;
+      c.mesh.rotation.x=sr.x+(-Math.PI/2-sr.x)*e;
+      c.mesh.rotation.y=sr.y*(1-e); c.mesh.rotation.z=sr.z*(1-e);
+      c.mesh.scale.setScalar(1-e*0.74);
+      c.mat.opacity=0.97*(1-e*0.86);
+    });
+    scene.remove(c.mesh); await wait(110);
+  }
+  cards=[];
+  setCmd('git add .','✓ 3 files staged'); await wait(800);
+
+  // ── Phase 2: git commit ──
+  setPhase(2);
+  setCmd('git commit -m "feat: initial setup"','sealing the box...');
+  moveCam(CAM.box.pos, CAM.box.tgt, 750); await wait(320);
+  const openX=lidPivot.rotation.x;
+  await tween(800,((_,e)=>{ lidPivot.rotation.x=openX+(0-openX)*e; }),'cubicOut');
+  const bY=boxGrp.position.y;
+  await tween(200,((_,e)=>{ boxGrp.position.y=bY+Math.sin(e*Math.PI)*0.04; }));
+  await wait(150);
+  await tween(580,((_,e)=>{ tapeMesh.material.opacity=e*0.96; }));
+  setCmd('git commit -m "feat: initial setup"','✓ sealed — a3f7c2d'); await wait(1200);
+
+  // ── Phase 3: git push — FULL SCENE REVEAL ──
+  setPhase(3);
+  setCmd('git push origin main','shipping to origin...');
+  // This is the dramatic reveal: rack becomes visible for first time
+  moveCam(CAM.wide.pos, CAM.wide.tgt, 1400); await wait(700);
+
+  beltActive=true; beltDir=1;
+  const sX=boxGrp.position.x, sZ=boxGrp.position.z;
+  await tween(500,((_,e)=>{
+    boxGrp.position.x=sX+(0.1-sX)*e;
+    boxGrp.position.y=0.02+(BELT_Y+0.02-0.02)*e;
+    boxGrp.position.z=sZ+(0-sZ)*e;
+  }),'sineInOut');
+  await tween(2000,((_,e)=>{ boxGrp.position.x=0.1+(3.9-0.1)*e; }),'linear');
+  beltActive=false;
+  const aX=boxGrp.position.x, aY=boxGrp.position.y;
+  await tween(460,((_,e)=>{
+    boxGrp.position.x=aX+(4.8-aX)*e;
+    boxGrp.position.y=aY+(1.7-aY)*e;
+    boxGrp.scale.setScalar(1-e*0.9);
+  }),'cubicIn');
+  boxGrp.visible=false;
+  blinkLed(6,true,4); blinkLed(7,true,4);
+  setCmd('git push origin main','✓ pushed to origin/main'); await wait(1600);
+
+  // ── Phase 4: git pull ──
+  setPhase(4);
+  setCmd('git pull origin main','fetching remote changes...');
+  moveCam(CAM.pull.pos, CAM.pull.tgt, 860); await wait(700);
+
+  boxGrp.visible=true;
+  boxGrp.position.set(4.8,1.6,0); boxGrp.scale.setScalar(0.01);
+  lidPivot.rotation.x=0; tapeMesh.material.opacity=0.96;
+  await tween(500,((_,e)=>boxGrp.scale.setScalar(e*0.95)),'elasticOut'); await wait(280);
+  blinkLed(6,false,3); blinkLed(8,false,3); await wait(480);
+
+  beltActive=true; beltDir=-1;
+  await tween(420,((_,e)=>{
+    boxGrp.position.x=4.8+(3.9-4.8)*e;
+    boxGrp.position.y=1.6+(BELT_Y+0.02-1.6)*e;
+    boxGrp.scale.setScalar(0.95+(1-0.95)*e);
+  }),'cubicOut');
+  await tween(1800,((_,e)=>{ boxGrp.position.x=3.9+(-1.45-3.9)*e; }),'linear');
+  beltActive=false; beltDir=1;
+  await tween(280,((_,e)=>{
+    boxGrp.position.y=BELT_Y+0.02+(0.02-(BELT_Y+0.02))*e;
+    boxGrp.position.z=0+(0.05-0)*e;
+  }),'sineInOut');
+
+  const cRx=lidPivot.rotation.x;
+  await tween(700,((_,e)=>{ lidPivot.rotation.x=cRx+(-Math.PI*0.78-cRx)*e; }),'cubicOut');
+  await wait(280);
+
+  // Cards fly out
+  spawnCards();
+  cards.forEach((c,i)=>{
+    c.mesh.position.set(-1.45,0.5-i*0.04,0.05-i*0.06);
+    c.mat.opacity=0; c.bezelMat.opacity=0;
+    c.mesh.scale.setScalar(0.08);
+    c.mesh.rotation.set(-Math.PI/2,0,0);
+  });
+  await tween(1000,((_,e)=>{
+    cards.forEach((c,i)=>{
+      const d=i*0.18, t=Math.max(0,Math.min(1,(e-d)/(1-d*0.5+0.01)));
+      const sp=new THREE.Vector3(-1.45,0.5-i*0.04,0.05-i*0.06);
+      c.mesh.position.lerpVectors(sp,CARD_POS[i],t);
+      c.mesh.position.y+=Math.sin(t*Math.PI)*0.3;
+      c.mat.opacity=t*0.97; c.bezelMat.opacity=t*0.9;
+      c.mesh.scale.setScalar(0.08+t*0.92);
+      c.mesh.rotation.x=-Math.PI/2+(CARD_ROT[i].x+Math.PI/2)*t;
+      c.mesh.rotation.y=CARD_ROT[i].y*t;
+      c.mesh.rotation.z=CARD_ROT[i].z*t;
+    });
+  }));
+
+  setCmd('git pull origin main','✓ working tree updated'); await wait(1500);
+  await moveCam(CAM.wide.pos, CAM.wide.tgt, 1400); await wait(700);
+  setCmd('','orbit the scene — replay anytime'); await wait(2400);
+  setCmd(''); setPhase(-1);
+  replayBtn.disabled = false;
+}
+
+// ── Render loop ────────────────────────────────────
+const clock = new THREE.Clock();
+function animate() {
+  requestAnimationFrame(animate);
+  const t = clock.getElapsedTime();
+  controls.update();
+
+  // Belt: rotate the end rollers to suggest motion
+  if(beltActive) {
+    beltAngle += 0.06 * beltDir;
+    // Rollers visual spin would need references, skip for clay clean look
+  }
+
+  // Cards: very subtle float
+  cards.forEach((c,i) => {
+    if(c.mat.opacity > 0.2) {
+      c.mesh.position.y = c.baseY + Math.sin(t*0.9+i*0.9)*0.014;
+      c.mesh.rotation.z = c.baseRz + Math.sin(t*0.55+i*1.2)*0.005;
+    }
+  });
+
+  // Box idle sway — only when at desk
+  if(boxGrp&&boxGrp.visible&&boxGrp.position.x<0) {
+    boxGrp.rotation.y = Math.sin(t*0.42)*0.009;
+  } else if(boxGrp) { boxGrp.rotation.y *= 0.94; }
+
+  renderer.render(scene, camera);
+}
+
+replayBtn.addEventListener('click', runSequence);
+camResetBtn.addEventListener('click', () => {
+  camera.position.set(...CAM.wide.pos);
+  controls.target.set(...CAM.wide.tgt);
+});
+animate();
+setTimeout(runSequence, 600);
+</script>
+</body>
+</html>

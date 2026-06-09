@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pnpm create *)",
+      "Bash(pnpm install *)",
+      "Bash(pnpm dev *)",
+      "Bash(curl -s http://localhost:5173)",
+      "Bash(lsof -iTCP -sTCP:LISTEN -P)",
+      "Bash(awk '{print $2, $11, $12, $13, $14}')",
+      "Bash(kill 3978 7244 96265 96327 96307 96248)",
+      "Bash(pnpm build *)",
+      "Bash(npx playwright *)",
+      "Bash(/opt/anaconda3/bin/python3 *)"
+    ]
+  }
+}
